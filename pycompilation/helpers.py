@@ -6,6 +6,19 @@ from mako.template import Template
 from mako.exceptions import text_error_template
 
 
+def run_sub_setup(path, cb, logger):
+    """
+    Useful for calling in a setup.py script
+    see symodesys's setup.py for an example
+    """
+    ori_dir = os.path.abspath(os.curdir)
+    cwd = os.path.join(os.path.abspath(
+        os.path.dirname(__file__)), path)
+    os.chdir(cwd)
+    cb(cwd, logger)
+    os.chdir(ori_dir)
+
+
 def render_mako_template_to(template, outpath, subsd):
     """
     template: either string of path or file like obj.
@@ -42,8 +55,9 @@ def md5_of_file(path):
 
 
 def missing_or_other_newer(path, other_path):
-    if not os.path.exists(path) or \
-       os.path.getmtime(other_path) > os.path.getmtime(path):
+    if not os.path.exists(path):
+        return True
+    if os.path.getmtime(other_path) > os.path.getmtime(path):
         return True
     return False
 

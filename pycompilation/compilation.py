@@ -2,7 +2,7 @@ from __future__ import print_function, division
 
 import os
 import subprocess
-
+import shutil
 from distutils.spawn import find_executable
 
 from helpers import HasMetaData, missing_or_other_newer
@@ -33,25 +33,37 @@ def _uniquify(l):
             result.append(x)
     return result
 
-def simple_cythonize(src, cwd=None, logger=None, full_module_name=None, only_update=False):
+def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
+                     full_module_name=None, only_update=False):
     from Cython.Compiler.Main import (
         default_options, compile, CompilationOptions
     )
+
+    assert src.lower().endswith('.pyx') or src.lower().endswith('.py')
     if cwd:
         src = os.path.join(cwd, src)
-    dst = os.path.splitext(src)[0] + '.c'
+    if not dstdir:
+        dstdir = os.path.dirname(src)
+
+    c_name = os.path.splitext(os.path.basename(src))[0] + '.c'
+
+    dstfile = os.path.join(dstdir, c_name)
 
     if only_update:
-        if not missing_or_other_newer(dst, src):
+        if not missing_or_other_newer(dstfile, src):
             logger.info('{} newer than {}, did not compile'.format(
-                dst, src))
+                dstfile, src))
             return
     cy_options = CompilationOptions(default_options)
-    if logger: logger.info("Cythonizing {} to {}".format(src, dst))
+    if logger: logger.info("Cythonizing {} to {}".format(src, dstfile))
     compile([src], cy_options, full_module_name=full_module_name)
+    if os.path.abspath(os.path.dirname(src)) != os.path.abspath(dstdir):
+        shutil.move(os.path.join(os.path.dirname(src), c_name),
+                    dstdir)
 
 
-def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None, only_update=False):
+def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None, only_update=False,
+                            metadir=None):
     """
     Use e.g. on *.c file written from `simple_cythonize`
     """
@@ -69,11 +81,12 @@ def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None, only_update=Fa
     compilern, flags = cc.split()[0], cc.split()[1:]
     runner =CCompilerRunner([src], dst, flags, run_linker=False,
                             compiler=[compilern]*2, cwd=cwd,
-                            inc_dirs=includes, logger=logger)
+                            inc_dirs=includes, metadir=metadir, logger=logger)
     return runner.run() # outerr, returncode
 
 
-def pyx2obj(pyxpath, dst=None, cwd=None, logger=None, full_module_name=None, only_update=False):
+def pyx2obj(pyxpath, objpath=None, intermediate_c_dir=None, cwd=None, logger=None, full_module_name=None, only_update=False,
+            metadir=None):
     """
     Conveninece function
 
@@ -81,20 +94,35 @@ def pyx2obj(pyxpath, dst=None, cwd=None, logger=None, full_module_name=None, onl
     If only_update is set to `True` the modification time is checked
     and compilation is only run if the source is newer than the destination
     """
+    assert pyxpath.endswith('.pyx')
     if cwd:
         pyxpath = os.path.join(cwd, pyxpath)
-        dst = os.path.join(cwd, dst)
-    assert pyxpath.endswith('.pyx')
-    simple_cythonize(pyxpath, cwd=cwd, logger=logger,
-                     full_module_name=full_module_name, only_update=only_update)
-    simple_py_c_compile_obj(pyxpath[:-4]+'.c', dst=dst, cwd=cwd, logger=logger,
-                            only_update=only_update)
+        objpath = os.path.join(cwd, objpath)
+
+    if os.path.isdir(objpath):
+        objpath = os.path.join(objpath, pyxpath[:-4]+'.o')
+
+    if intermediate_c_dir:
+        assert os.path.isdir(intermediate_c_dir)
+        if cwd:
+            intermediate_c_dir = os.path.join(cwd, intermediate_c_path)
+    else:
+        intermediate_c_dir = os.path.dirname(objpath)
+    intermediate_c_file = os.path.join(intermediate_c_dir, os.path.basename(pyxpath)[:-4] + '.c')
+
+    simple_cythonize(pyxpath, dstdir=intermediate_c_dir,
+                     cwd=cwd, logger=logger, full_module_name=full_module_name,
+                     only_update=only_update)
+    simple_py_c_compile_obj(intermediate_c_file, dst=objpath, cwd=cwd, logger=logger,
+                            only_update=only_update, metadir=metadir)
 
 
 class CompilerRunner(HasMetaData):
 
     flag_dict = None # Lazy unified defaults for compilers
     metadata_filename = '.metadata_CompilerRunner'
+    compiler_name_vendor_mapping = None # subclass to be e.g. {'gcc': 'gnu', ...}
+    logger = None
 
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
@@ -112,9 +140,10 @@ class CompilerRunner(HasMetaData):
         #self.run_linker = run_linker
         if compiler:
             self.compiler_name, self.compiler_binary = compiler
+            self.save_to_metadata_file(metadir or cwd, 'vendor',
+                                       self.compiler_name_vendor_mapping[self.compiler_name])
         else:
             # Find a compiler
-
             preferred_compiler_name = self.compiler_dict.get(preferred_vendor,None)
             self.compiler_name, self.compiler_binary = self.find_compiler(
                 preferred_compiler_name, metadir or cwd)
@@ -159,8 +188,13 @@ class CompilerRunner(HasMetaData):
         there in a file with cls.metadata_filename as name.
         """
         if load_save_choice:
+            # try:
+            #     return cls.get_from_metadata_file(load_save_choice, 'compiler')
+            # except IOError:
             try:
-                return cls.get_from_metadata_file(load_save_choice, 'compiler')
+                pcn = cls.compiler_dict.get(cls.get_from_metadata_file(
+                    load_save_choice, 'vendor'),None)
+                preferred_compiler_name = preferred_compiler_name or pcn
             except IOError:
                 pass
         candidates = cls.flag_dict.keys()
@@ -168,10 +202,13 @@ class CompilerRunner(HasMetaData):
             if preferred_compiler_name in candidates:
                 # Duplication doesn't matter
                 candidates = [preferred_compiler_name] + candidates
-        name_path = find_binary_of_command(candidates)
+        name, path = find_binary_of_command(candidates)
         if load_save_choice:
-            cls.save_to_metadata_file(load_save_choice, 'compiler', name_path)
-        return name_path
+            if cls.logger: logger.info('Wrote choice of compiler to: load_save_choice')
+            cls.save_to_metadata_file(load_save_choice, 'compiler', (name, path))
+            cls.save_to_metadata_file(load_save_choice, 'vendor',
+                                      cls.compiler_name_vendor_mapping[name])
+        return name, path
 
 
     def run(self):
@@ -225,6 +262,8 @@ class CCompilerRunner(CompilerRunner):
         }
     }
 
+    compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel'}
+
 
 class FortranCompilerRunner(CompilerRunner):
 
@@ -243,6 +282,8 @@ class FortranCompilerRunner(CompilerRunner):
             'warn': ('-warn', 'all',),
         }
     }
+
+    compiler_name_vendor_mapping = {'gfortran': 'gnu', 'ifort': 'intel'}
 
 
     def __init__(self, *args, **kwargs):

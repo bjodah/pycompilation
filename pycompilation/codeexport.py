@@ -268,3 +268,34 @@ class F90_Code(Generic_Code):
     @property
     def binary_path(self):
         return os.path.join(self._tempdir, self._so_file)
+
+
+class Cython_Code(Generic_Code):
+    """
+    Uses Cython's build_ext and distutils
+    to simplify compilation
+    """
+
+    from Cython.Distutils import build_ext
+    from distutils.core import setup
+    from distutils.extension import Extension
+
+    def _compile(self):
+        sources = [os.path.join(
+            self._tempdir, os.path.basename(x).replace(
+                '_template', '')) for x \
+            in self._source_files]
+        setup(
+            script_name =  'DUMMY_SCRIPT_NAME',
+            script_args =  ['build_ext',  '--build-lib', self._tempdir],
+            include_dirs = self._include_dirs,
+            cmdclass = {'build_ext': build_ext},
+            ext_modules = [
+                Extension(
+                    self.extension_name,
+                    sources,
+                    libraries=self._libraries,
+                    library_dirs=self._library_dirs,
+                    include_dirs=self._include_dirs),
+                ]
+            )
