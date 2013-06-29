@@ -255,6 +255,7 @@ class CCompilerRunner(CompilerRunner):
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O3', '-march=native', '-ffast-math', '-funroll-loops'),
+            'c99': ('-std=c99',)
         },
         'icc': {
             'pic': ('-fPIC',),
