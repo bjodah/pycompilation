@@ -112,6 +112,31 @@ class Generic_Code(object):
         return {}
 
 
+    def _get_cse_code(self, exprs, basename):
+        cse_defs, cse_exprs = sympy.cse(
+            exprs, symbols=sympy.numbered_symbols(basename))
+        cse_defs_code = [(vname, self.as_arrayified_code(vexpr)) for \
+                         vname, vexpr in cse_defs]
+        cse_exprs_code = [self.as_arrayified_code(x) for x \
+                          in cse_exprs]
+        return cse_defs_code, cse_exprs_code
+
+
+    def _dummify_expr(self, expr, basename, symbs):
+        dummies = sympy.symbols(basename+':'+str(len(symbs)))
+        for i, s in enumerate(symbs):
+            expr = expr.subs({s: dummies[i]})
+        return expr
+
+
+    def _getitem_syntaxify(self, scode, basename, token, offset=None):
+        offset_str = '{0:+d}'.format(offset) if offset != None else ''
+        tgt = {'C':token+r'[\1'+offset_str+']',
+               'F':token+r'(\1'+offset_str+')',
+        }.get(self.syntax)
+        return re.sub(basename+'(\d+)', tgt, scode)
+
+
     def _write_code(self):
         for path in self._cached_files:
             # Make sure we start with a clean slate
