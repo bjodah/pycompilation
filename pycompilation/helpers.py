@@ -6,14 +6,12 @@ from mako.template import Template
 from mako.exceptions import text_error_template
 
 
-def run_sub_setup(path, cb, logger):
+def run_sub_setup(cwd, cb, logger):
     """
     Useful for calling in a setup.py script
     see symodesys's setup.py for an example
     """
     ori_dir = os.path.abspath(os.curdir)
-    cwd = os.path.join(os.path.abspath(
-        os.path.dirname(__file__)), path)
     os.chdir(cwd)
     cb(cwd, logger)
     os.chdir(ori_dir)
@@ -147,3 +145,36 @@ def import___not_working(filename):
     print 'id of .transform function: ', id(mod.transform)
     print 'md5 of .so file: ',md5_of_file(mod.__file__).hexdigest()
     return mod
+
+def download_files(websrc, files, dest, md5sums, only_if_missing=True):
+        # Download sources ----------------------------------------
+    for f in files:
+        fpath = os.path.join(cwd, f)
+        if not os.path.exists(fpath):
+            import urllib2
+            print('Downloading: {}'.format(websrc+f))
+            open(fpath, 'wt').write(urllib2.urlopen(websrc+f).read())
+        fmd5 = md5_of_file(fpath).hexdigest()
+        if fmd5 != md5sums[f]:
+            raise ValueError("""Warning: MD5 sum of {} differs from that provided in setup.py.
+            i.e. {} vs. {}""".format(fpath, fmd5, md5sums[f]))
+
+
+def compile_sources(CompilerRunner_, files, cwd, destdir, update_only=True, **kwargs):
+    # (Pre)compile sources ----------------------------------------
+
+    # Distutils does not allow to use .o files in compilation
+    # (see http://bugs.python.org/issue5372)
+    # hence the compilation of ODEPACK is done once and for all and
+    # saved in prebuilt dir
+
+    for f in files:
+        fpath = os.path.join(cwd, f)
+        name, ext = os.path.splitext(f)
+        dst = os.path.join(cwd, 'prebuilt', name+'.o') # .ext -> .o
+        if missing_or_other_newer(dst, f):
+            runner = CompilerRunner_(
+                [fpath], dst, **kwargs)
+            runner.run()
+        else:
+            print("Found {}, did not recompile.".format(dst))

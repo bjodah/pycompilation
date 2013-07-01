@@ -58,6 +58,8 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     if logger: logger.info("Cythonizing {} to {}".format(src, dstfile))
     compile([src], cy_options, full_module_name=full_module_name)
     if os.path.abspath(os.path.dirname(src)) != os.path.abspath(dstdir):
+        if os.path.exists(dstfile):
+            os.unlink(dstfile)
         shutil.move(os.path.join(os.path.dirname(src), c_name),
                     dstdir)
 
@@ -103,11 +105,15 @@ def pyx2obj(pyxpath, objpath=None, intermediate_c_dir=None, cwd=None, logger=Non
         objpath = os.path.join(objpath, pyxpath[:-4]+'.o')
 
     if intermediate_c_dir:
-        assert os.path.isdir(intermediate_c_dir)
         if cwd:
             intermediate_c_dir = os.path.join(cwd, intermediate_c_path)
     else:
         intermediate_c_dir = os.path.dirname(objpath)
+    if os.path.exists(intermediate_c_dir):
+        assert os.path.isdir(intermediate_c_dir)
+    else:
+        os.mkdir(intermediate_c_dir)
+
     intermediate_c_file = os.path.join(intermediate_c_dir, os.path.basename(pyxpath)[:-4] + '.c')
 
     simple_cythonize(pyxpath, dstdir=intermediate_c_dir,
