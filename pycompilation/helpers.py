@@ -146,10 +146,10 @@ def import___not_working(filename):
     print 'md5 of .so file: ',md5_of_file(mod.__file__).hexdigest()
     return mod
 
-def download_files(websrc, files, dest, md5sums, only_if_missing=True):
+def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True):
         # Download sources ----------------------------------------
     for f in files:
-        fpath = os.path.join(cwd, f)
+        fpath = os.path.join(cwd, f) if cwd else f
         if not os.path.exists(fpath):
             import urllib2
             print('Downloading: {}'.format(websrc+f))
@@ -157,10 +157,11 @@ def download_files(websrc, files, dest, md5sums, only_if_missing=True):
         fmd5 = md5_of_file(fpath).hexdigest()
         if fmd5 != md5sums[f]:
             raise ValueError("""Warning: MD5 sum of {} differs from that provided in setup.py.
-            i.e. {} vs. {}""".format(fpath, fmd5, md5sums[f]))
+            i.e. {} vs. {}""".format(f, fmd5, md5sums[f]))
 
 
-def compile_sources(CompilerRunner_, files, cwd, destdir, update_only=True, **kwargs):
+def compile_sources(CompilerRunner_, files, destdir, cwd=None,
+                    update_only=True, **kwargs):
     # (Pre)compile sources ----------------------------------------
 
     # Distutils does not allow to use .o files in compilation
@@ -169,12 +170,12 @@ def compile_sources(CompilerRunner_, files, cwd, destdir, update_only=True, **kw
     # saved in prebuilt dir
 
     for f in files:
-        fpath = os.path.join(cwd, f)
+        if cwd: f = os.path.join(cwd, f)
         name, ext = os.path.splitext(f)
         dst = os.path.join(cwd, 'prebuilt', name+'.o') # .ext -> .o
         if missing_or_other_newer(dst, f):
             runner = CompilerRunner_(
-                [fpath], dst, **kwargs)
+                [f], dst, cwd=cwd, **kwargs)
             runner.run()
         else:
             print("Found {}, did not recompile.".format(dst))
