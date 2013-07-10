@@ -133,17 +133,27 @@ def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True):
 
 def compile_sources(CompilerRunner_, files, destdir, cwd=None,
                     update_only=True, **kwargs):
-    # (Pre)compile sources ----------------------------------------
+    """
+    Distutils does not allow to use .o files in compilation
+    (see http://bugs.python.org/issue5372)
+    hence the compilation of source files cannot be cached
+    unless doing something like what compile_sources does.
 
-    # Distutils does not allow to use .o files in compilation
-    # (see http://bugs.python.org/issue5372)
-    # hence the compilation of ODEPACK is done once and for all and
-    # saved in prebuilt dir
-
+    Arguments:
+    -`CompilerRunner_`: coulde be e.g. pycompilation.FortranCompilerRunner
+    -`files`: list of paths to source files, if cwd is given, the paths are taken as relative
+    -`destdir`: path to output directory, if cwd is given, the path is taken as relative
+    -`cwd`: current working directory. Specify to have compiler run in other directory.
+    -`update_only`: True (default) implies only to compile sources newer than their object files.
+    -`**kwargs`: keyword arguments pass along to CompilerRunner_
+    """
     for f in files:
-        if cwd: f = os.path.join(cwd, f)
         name, ext = os.path.splitext(f)
-        dst = os.path.join(cwd, 'prebuilt', name+'.o') # .ext -> .o
+        fname = name+'.o' # .ext -> .o
+        if cwd:
+            dst = os.path.join(cwd, destdir, fname)
+        else:
+            dst = os.path.join(destdir, fname)
         if missing_or_other_newer(dst, f):
             runner = CompilerRunner_(
                 [f], dst, cwd=cwd, **kwargs)
