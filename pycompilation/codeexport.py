@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 
 # For performance reasons it is preferable that the
 # numeric integration is performed in a compiled language
@@ -26,8 +26,9 @@ import sympy
 
 
 # Intrapackage imports
-from helpers import import_, render_mako_template_to
-from compilation import FortranCompilerRunner, CCompilerRunner
+from .helpers import defaultnamedtuple
+from .util import import_, render_mako_template_to
+from .compilation import FortranCompilerRunner, CCompilerRunner
 
 
 class Generic_Code(object):
@@ -112,12 +113,27 @@ class Generic_Code(object):
         return {}
 
 
-    def _get_cse_code(self, exprs, basename):
+    def as_arrayified_code(self, expr, dummy_groups):
+        """
+        >>> self.as_arrayified_code(f(x)**2+y, ('funcdummies', [f(x)], 'y', 1, 0))
+        """
+        for basename, symbols, code_tok, offset, dim in dummy_groups:
+            expr = self._dummify_expr(expr, basename, symbols)
+
+        scode = self.wcode(expr)
+
+        for basename, symbols, code_tok, offset, dim in dummy_groups:
+            scode = self._getitem_syntaxify(scode, basename, code_tok, offset, dim)
+
+        return scode
+
+
+    def get_cse_code(self, exprs, basename, dummy_groups=()):
         cse_defs, cse_exprs = sympy.cse(
             exprs, symbols=sympy.numbered_symbols(basename))
-        cse_defs_code = [(vname, self.as_arrayified_code(vexpr)) for \
+        cse_defs_code = [(vname, self.as_arrayified_code(vexpr, dummy_groups)) for \
                          vname, vexpr in cse_defs]
-        cse_exprs_code = [self.as_arrayified_code(x) for x \
+        cse_exprs_code = [self.as_arrayified_code(x, dummy_groups) for x \
                           in cse_exprs]
         return cse_defs_code, cse_exprs_code
 
@@ -129,10 +145,11 @@ class Generic_Code(object):
         return expr
 
 
-    def _getitem_syntaxify(self, scode, basename, token, offset=None):
+    def _getitem_syntaxify(self, scode, basename, token, offset=None, dim=0):
+        if self.syntax == 'C': assert dim == 0 # C does not support broadcasting
         offset_str = '{0:+d}'.format(offset) if offset != None else ''
         tgt = {'C':token+r'[\1'+offset_str+']',
-               'F':token+r'(\1'+offset_str+')',
+               'F':token+'('+':,'*dim+r'\1'+offset_str+')',
         }.get(self.syntax)
         return re.sub(basename+'(\d+)', tgt, scode)
 
@@ -224,6 +241,10 @@ class Generic_Code(object):
             preferred_vendor=self.preferred_vendor,
             logger=self.logger)
         runner.run()
+
+
+DummyGroup = defaultnamedtuple(
+    'DummyGroup', 'basename symbols code_tok offset dim', [None, 0])
 
 
 class Cython_Code(Generic_Code):

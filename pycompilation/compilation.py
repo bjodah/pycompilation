@@ -5,7 +5,7 @@ import subprocess
 import shutil
 from distutils.spawn import find_executable
 
-from .helpers import HasMetaData, missing_or_other_newer
+from .util import HasMetaData, missing_or_other_newer
 # TODO: change print statements to logging statements.
 
 
