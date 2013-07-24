@@ -19,7 +19,7 @@ def find_binary_of_command(candidates):
     """
     for c in candidates:
         binary_path = find_executable(c)
-        if c:
+        if c and binary_path:
             return c, binary_path
     raise RuntimeError('No binary located for candidates: {}'.format(
         candidates))
@@ -97,6 +97,8 @@ def pyx2obj(pyxpath, objpath=None, intermediate_c_dir=None, cwd=None, logger=Non
     and compilation is only run if the source is newer than the destination
     """
     assert pyxpath.endswith('.pyx')
+
+    objpath = objpath or '.'
     if cwd:
         pyxpath = os.path.join(cwd, pyxpath)
         objpath = os.path.join(cwd, objpath)
@@ -139,7 +141,7 @@ class CompilerRunner(HasMetaData):
         Arguments:
         - `preferred_vendor`: key of compiler_dict
         """
-
+        cwd = cwd or '.'
         self.sources = sources if hasattr(sources,'__iter__') else [sources]
         self.out = out
         self.flags = flags or []
