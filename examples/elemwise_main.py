@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from pycompilation import pyx2obj, compile_sources, compile_py_so, CCompilerRunner, import_
+from pycompilation import pyx2obj, compile_sources, compile_py_so, import_
 from pycompilation.util import render_mako_template_to
 
 def run_compilation(tempd, logger=None):
@@ -15,22 +15,25 @@ def run_compilation(tempd, logger=None):
     # source in elemwise_wrapper.pyx
 
     pyx2obj('elemwise_wrapper.pyx', cwd=tempd, logger=logger)
-    compile_sources(CCompilerRunner, ['elemwise.c'], cwd=tempd,
+
+    compile_sources(['elemwise.c'], cwd=tempd,
                     options=['pic', 'warn', 'fast', 'c99'],
                     run_linker=False, logger=logger)
 
-    compile_py_so(CCompilerRunner,
-                  ['elemwise.o', 'elemwise_wrapper.o'],
-                  'elemwise_wrapper.so', cwd=tempd, logger=logger
+    so_file = compile_py_so(['elemwise.o', 'elemwise_wrapper.o'],
+                  cwd=tempd, logger=logger
               )
-    return os.path.join(tempd, 'elemwise_wrapper.so')
+    return os.path.join(tempd, so_file)
 
 def generate_code(tempd):
     ops = [('add', '+'), ('sub', '-'), ('mul', '*')]
     ctypes = ['double', 'float']
-    nptypes = ['float64', 'float32'] #[x.type.__name__ for x in map(np.dtype, ctypes)]
+    nptypes = ['float64', 'float32']
+    #nptypes = [x.type.__name__ for x in map(np.dtype, ctypes)]
     types = zip(ctypes, nptypes)
     combos = list(product(ops, types))
+    if not os.path.exists(tempd):
+        os.mkdir(tempd)
     render_mako_template_to('elemwise_template.c',
                             os.path.join(tempd, 'elemwise.c'),
                             {'idxtype': 'int', 'combos': combos})
@@ -43,7 +46,7 @@ def generate_code(tempd):
 
 
 def main(logger=None):
-    tempd = tempfile.mkdtemp()
+    tempd = './elemwise_build'
     generate_code(tempd)
     sofilepath = run_compilation(tempd, logger=logger)
     mod = import_(sofilepath)

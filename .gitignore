@@ -11,3 +11,4 @@ TAGS
 */#*#
 */*.so
 examples/.meta*
+examples/*build*

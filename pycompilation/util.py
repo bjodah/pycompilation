@@ -6,6 +6,16 @@ from mako.template import Template
 from mako.exceptions import text_error_template
 
 
+def get_abspath(path, cwd=None):
+    if os.path.isabs(path):
+        return path
+    else:
+        cwd = cwd or '.'
+        return os.path.abspath(
+            os.path.join(cwd, path)
+        )
+
+
 def run_sub_setup(cwd, cb, logger):
     """
     Useful for calling in a setup.py script
@@ -52,7 +62,10 @@ def md5_of_file(path):
     return md
 
 
-def missing_or_other_newer(path, other_path):
+def missing_or_other_newer(path, other_path, cwd=None):
+    cwd = cwd or '.'
+    path = get_abspath(path, cwd=cwd)
+    other_path = get_abspath(other_path, cwd)
     if not os.path.exists(path):
         return True
     if os.path.getmtime(other_path) > os.path.getmtime(path):
@@ -129,64 +142,3 @@ def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True):
         if fmd5 != md5sums[f]:
             raise ValueError("""Warning: MD5 sum of {} differs from that provided in setup.py.
             i.e. {} vs. {}""".format(f, fmd5, md5sums[f]))
-
-
-def compile_sources(CompilerRunner_, files, destdir=None, cwd=None,
-                    update_only=True, **kwargs):
-    """
-    Distutils does not allow to use .o files in compilation
-    (see http://bugs.python.org/issue5372)
-    hence the compilation of source files cannot be cached
-    unless doing something like what compile_sources does.
-
-    Arguments:
-    -`CompilerRunner_`: coulde be e.g. pycompilation.FortranCompilerRunner
-    -`files`: list of paths to source files, if cwd is given, the paths are taken as relative
-    -`destdir`: path to output directory, if cwd is given, the path is taken as relative
-    -`cwd`: current working directory. Specify to have compiler run in other directory.
-    -`update_only`: True (default) implies only to compile sources newer than their object files.
-    -`**kwargs`: keyword arguments pass along to CompilerRunner_
-    """
-    destdir = destdir or '.'
-    for f in files:
-        name, ext = os.path.splitext(f)
-        fname = name+'.o' # .ext -> .o
-        if cwd:
-            dst = os.path.join(cwd, destdir, fname)
-        else:
-            dst = os.path.join(destdir, fname)
-        if missing_or_other_newer(dst, f):
-            runner = CompilerRunner_(
-                [f], dst, cwd=cwd, **kwargs)
-            runner.run()
-        else:
-            print("Found {}, did not recompile.".format(dst))
-
-
-def compile_py_so(CompilerRunner_, obj_files, so_file, cwd=None,
-                  inc_dirs=None, libs=None, lib_dirs=None,
-                  preferred_vendor=None, logger=None):
-    """
-    Generate shared object for importing
-    """
-    from distutils.sysconfig import get_config_vars
-    pylibs = [x[2:] for x in get_config_vars(
-        'BLDLIBRARY')[0].split() if x.startswith('-l')]
-    cc = get_config_vars('BLDSHARED')[0]
-
-    inc_dirs = inc_dirs or []
-    libs = libs or []
-    lib_dirs = lib_dirs or []
-
-    # We want something like: gcc, ['-pthread', ...
-    compilername, flags = cc.split()[0], cc.split()[1:]
-    runner = CompilerRunner_(
-        obj_files,
-        so_file, flags,
-        cwd=cwd,
-        inc_dirs=inc_dirs,
-        libs=libs+pylibs,
-        lib_dirs=lib_dirs,
-        preferred_vendor=preferred_vendor,
-        logger=logger)
-    runner.run()

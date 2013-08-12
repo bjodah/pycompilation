@@ -1,4 +1,27 @@
+import os
+
 from collections import OrderedDict, namedtuple
+
+from distutils.spawn import find_executable
+
+def uniquify(l):
+    result = []
+    for x in l:
+        if not x in result:
+            result.append(x)
+    return result
+
+
+def find_binary_of_command(candidates):
+    """
+    Currently only support *nix systems (invocation of which)
+    """
+    for c in candidates:
+        binary_path = find_executable(c)
+        if c and binary_path:
+            return c, binary_path
+    raise RuntimeError('No binary located for candidates: {}'.format(
+        candidates))
 
 
 def defaultnamedtuple(name, args, defaults):
@@ -17,3 +40,10 @@ def defaultnamedtuple(name, args, defaults):
             return nt(*args)
     factory.__doc__ = nt.__doc__
     return factory
+
+
+def assure_dir(path):
+    if os.path.exists(path):
+        assert os.path.isdir(path)
+    else:
+        os.mkdir(path)
