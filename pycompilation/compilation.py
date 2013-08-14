@@ -153,7 +153,7 @@ class CompilerRunner(HasMetaData):
                      str(self.cmd_outerr)))
 
         if self.logger and self.cmd_outerr: self.logger.info(
-                '...with output: '+self.cmd_outerr)
+                '...with output:\n'+self.cmd_outerr)
 
         return self.cmd_outerr, self.cmd_returncode
 
@@ -176,6 +176,8 @@ class CCompilerRunner(CompilerRunner):
         'icc': {
             'pic': ('-fPIC',),
             'fast': ('-fast',),
+            'warn': ('-Wall',),
+            'c99': ('-std=c99',),
         }
     }
 
@@ -195,7 +197,7 @@ class FortranCompilerRunner(CompilerRunner):
             'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
         },
         'ifort': {
-            'f90': ('-stand f95',),
+            'f90': ('-stand f08',),
             'warn': ('-warn', 'all',),
         }
     }
