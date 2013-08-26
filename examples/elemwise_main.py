@@ -10,6 +10,8 @@ import numpy as np
 from pycompilation import pyx2obj, compile_sources, compile_py_so, import_
 from pycompilation.util import render_mako_template_to
 
+from operator import add, mul, sub, div, pow
+
 def run_compilation(tempd, logger=None):
     # Let's compile elemwise.c and wrap it using cython
     # source in elemwise_wrapper.pyx
@@ -17,20 +19,49 @@ def run_compilation(tempd, logger=None):
     pyx2obj('elemwise_wrapper.pyx', cwd=tempd, logger=logger)
 
     compile_sources(['elemwise.c'], cwd=tempd,
-                    options=['pic', 'warn', 'fast', 'c99'],
+                    options=['pic', 'warn', 'fast', 'c99', 'openmp'],
                     run_linker=False, logger=logger)
 
     so_file = compile_py_so(['elemwise.o', 'elemwise_wrapper.o'],
-                  cwd=tempd, logger=logger
+                  options=['openmp'], cwd=tempd, logger=logger
               )
     return os.path.join(tempd, so_file)
 
+
+def mk_symbol_opformater(symb):
+    def opformater(a,b):
+        return symb.join((a,b))
+    return opformater
+
+
+def mk_call_opformater(token):
+    def opformater(a,b):
+        return token+'('+a+', '+b+')'
+    return opformater
+
+def mk_cond_call_opformater(token, mapping):
+    def opformater(a,b,key):
+        return token+mapping[key]+'('+a+', '+b+')'
+    return opformater
+
+
 def generate_code(tempd):
-    ops = [('add', '+'), ('sub', '-'), ('mul', '*')]
     ctypes = ['double', 'float']
     nptypes = ['float64', 'float32']
+    vectypes = ['__m128d', '__m128']
+    vecsizes = [2,4]
     #nptypes = [x.type.__name__ for x in map(np.dtype, ctypes)]
-    types = zip(ctypes, nptypes)
+    mapping = {'double': 'd', 'float': 's'} # from SSE
+    # only pairwise operators wrapped (same type) e.g. '_mm_add_pd'
+    ops = [
+        ('add', mk_symbol_opformater('+'), mk_cond_call_opformater('_mm_add_p', mapping)),
+        ('sub', mk_symbol_opformater('-'), mk_cond_call_opformater('_mm_sub_p', mapping)),
+        ('mul', mk_symbol_opformater('*'), mk_cond_call_opformater('_mm_mul_p', mapping)),
+        ('div', mk_symbol_opformater('/'), mk_cond_call_opformater('_mm_div_p', mapping)),
+        ('pow', mk_call_opformater('pow'), None),
+    ]
+
+    types = zip(ctypes, nptypes, vectypes, vecsizes)
     combos = list(product(ops, types))
     if not os.path.exists(tempd):
         os.mkdir(tempd)
@@ -45,46 +76,41 @@ def generate_code(tempd):
                              'combos': combos})
 
 
-def main(logger=None):
+def bench_binary_op(py_op, cb, a, b):
+    t1 = time.time()
+    x = cb(a,b)
+    t2 = time.time()
+    xref = py_op(a,b)
+    t3 = time.time()
+    assert np.allclose(x, xref)
+    return (t2-t1)/(t3-t2)
+
+
+
+
+def main(logger=None, clean=False):
     tempd = './elemwise_build'
     generate_code(tempd)
     sofilepath = run_compilation(tempd, logger=logger)
     mod = import_(sofilepath)
 
-    N = 1e6
+    N = 8*1024*1024
 
-    a = np.random.random(N)
-    b = np.random.random(N)
-    c = np.array(np.random.random(N), dtype=np.float32)
-    d = np.array(np.random.random(N), dtype=np.float32)
+    for py_op, dtype_ in product([add,mul,sub,pow],
+                              [np.float64, np.float32]):
+        a = np.array(np.random.random(N), dtype=dtype_)
+        b = np.array(np.random.random(N), dtype=dtype_)
+        cb = getattr(mod, 'elem'+py_op.__name__)
+        print('{} ({}) runtime divided by numpy runtime: {}'.format(
+            cb, dtype_, bench_binary_op(py_op, cb, a, b)))
+        cb = getattr(mod, 'vec'+py_op.__name__, None)
+        if cb != None:
+            print('{} ({}) runtime divided by numpy runtime: {}'.format(
+                cb, dtype_, bench_binary_op(py_op, cb, a, b)))
 
-    t1 = time.time()
-    x = mod.elemadd(a,b)
-    y = mod.elemadd(c,d)
-    t2 = time.time()
-    xref = a+b
-    yref = c+d
-    t3 = time.time()
-    assert np.allclose(x, xref)
-    assert np.allclose(y, yref)
 
-    print('elemwise runtime divided by numpy runtime: {}'.format(
-        (t2-t1)/(t3-t2)))
-
-    t1 = time.time()
-    x = mod.elemmul(a,b)
-    y = mod.elemmul(c,d)
-    t2 = time.time()
-    xref = a*b
-    yref = c*d
-    t3 = time.time()
-    assert np.allclose(x, a*b)
-    assert np.allclose(y, c*d)
-
-    print('elemwise runtime divided by numpy runtime: {}'.format(
-        (t2-t1)/(t3-t2)))
-
-    shutil.rmtree(tempd)
+    if clean:
+        shutil.rmtree(tempd)
 
 
 if __name__ == '__main__':

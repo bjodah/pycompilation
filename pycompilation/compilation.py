@@ -171,11 +171,13 @@ class CCompilerRunner(CompilerRunner):
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O3', '-march=native', '-ffast-math',
                      '-funroll-loops'),
-            'c99': ('-std=c99',)
+            'c99': ('-std=c99',),
+            'openmp': ('-fopenmp',),
         },
         'icc': {
             'pic': ('-fPIC',),
             'fast': ('-fast',),
+            'openmp': ('-openmp'),
         }
     }
 
@@ -258,9 +260,7 @@ def compile_sources(files, CompilerRunner_=CCompilerRunner,
 
 
 def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
-                  so_file=None, cwd=None,
-                  inc_dirs=None, libs=None, lib_dirs=None,
-                  preferred_vendor=None, logger=None):
+                  so_file=None, cwd=None, libs=None, **kwargs):
     """
     Generate shared object for importing
 
@@ -279,9 +279,7 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
 
     so_file = so_file or os.path.splitext(obj_files[-1])[0]+'.so'
 
-    inc_dirs = inc_dirs or []
     libs = libs or []
-    lib_dirs = lib_dirs or []
 
     # We want something like: gcc, ['-pthread', ...
     compilername, flags = cc.split()[0], cc.split()[1:]
@@ -289,11 +287,8 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
         obj_files,
         so_file, flags,
         cwd=cwd,
-        inc_dirs=inc_dirs,
         libs=libs+pylibs,
-        lib_dirs=lib_dirs,
-        preferred_vendor=preferred_vendor,
-        logger=logger)
+        **kwargs)
     runner.run()
     return so_file
 
