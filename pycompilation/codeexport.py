@@ -29,6 +29,35 @@ import sympy
 from .helpers import defaultnamedtuple
 from .util import import_, render_mako_template_to
 from .compilation import FortranCompilerRunner, CCompilerRunner
+from .helpers import defaultnamedtuple
+
+Loop = defaultnamedtuple('Loop', ('counter', 'bounds_idx', 'body'), ())
+
+
+def _dummify_expr(expr, basename, symbs):
+    """
+    Useful to robustify prior to e.g. regexp substitution of code strings
+    """
+    dummies = sympy.symbols(basename+':'+str(len(symbs)))
+    for i, s in enumerate(symbs):
+        expr = expr.subs({s: dummies[i]})
+    return expr
+
+
+def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0):
+    """
+    Syntax is either 'C' or 'F'
+    Example:
+    >>> syntaxify_getitem('C', 'y_i = x_i+i', 'yout', 'y')
+    'yout[i] = x_i+i'
+    """
+    if syntax == 'C': assert dim == 0 # C does not support broadcasting
+    offset_str = '{0:+d}'.format(offset) if offset != None else ''
+    tgt = {'C':token+r'[\1'+offset_str+']',
+           'F':token+'('+':,'*dim+r'\1'+offset_str+')',
+    }.get(syntax)
+    return re.sub(basename+'(\d+)', tgt, scode)
+
 
 
 class Generic_Code(object):
@@ -41,8 +70,6 @@ class Generic_Code(object):
     Attributes to optionally override:
     -`syntax`: any of the supported syntaxes ('C' or 'F')
     -`tempdir_basename`: basename of tempdirs created in e.g. /tmp/
-    -`_cached_files`: Files that needs to be removed
-        between compilations
     -`_basedir` the path to the directory which relative paths are given to
     """
 
@@ -55,13 +82,22 @@ class Generic_Code(object):
 
     extension_name = 'generic_extension'
 
+    list_attributes = (
+        '_written_files', # Track files which are written
+        '_copy_files',   # Files that will be copied prior to compilation
+        '_cached_files', # Files that should be removed between compilations
+        '_include_dirs', # -I
+        '_libraries',    # -l
+        '_library_dirs', # -L
+    )
+
     def __init__(self, tempdir=None, save_temp=False, logger=None):
         """
         Arguments:
         - `tempdir`: Optional path to dir to write code files
         - `save_temp`: Save generated code files when garbage
             collected? (Default: False)
-
+        - `logger`: optional logging.Logger instance.
         """
 
         if self.syntax == 'C':
@@ -85,16 +121,13 @@ class Generic_Code(object):
             os.makedirs(self._tempdir)
             self._remove_tempdir_on_clean = True
 
-        #
-        for lstattr in ['_written_files', '_cached_files',
-                        '_include_dirs', '_libraries',
-                        '_library_dirs', '_include_dirs',
-                        '_copy_files']:
-            if not hasattr(self, lstattr):
-                setattr(self, lstattr, [])
-            else:
-                setattr(self, lstattr,
-                        getattr(self, lstattr) or [])
+        # Initialize lists
+        for lstattr in self.list_attributes:
+            setattr(self, lstattr,
+                    getattr(self, lstattr, None) or [])
+            # if not hasattr(self, lstattr):
+            #     setattr(self, lstattr, [])
+            # else:
 
         # If .pyx files in _templates, add .c file to _cached_files
         self._cached_files += [x.replace('_template','').replace(
@@ -118,12 +151,12 @@ class Generic_Code(object):
         >>> self.as_arrayified_code(f(x)**2+y, ('funcdummies', [f(x)], 'y', 1, 0))
         """
         for basename, symbols, code_tok, offset, dim in dummy_groups:
-            expr = self._dummify_expr(expr, basename, symbols)
+            expr = _dummify_expr(expr, basename, symbols)
 
         scode = self.wcode(expr)
 
         for basename, symbols, code_tok, offset, dim in dummy_groups:
-            scode = self._getitem_syntaxify(scode, basename, code_tok, offset, dim)
+            scode = syntaxify_getitem(self.syntax, scode, basename, code_tok, offset, dim)
 
         return scode
 
@@ -136,22 +169,6 @@ class Generic_Code(object):
         cse_exprs_code = [self.as_arrayified_code(x, dummy_groups) for x \
                           in cse_exprs]
         return cse_defs_code, cse_exprs_code
-
-
-    def _dummify_expr(self, expr, basename, symbs):
-        dummies = sympy.symbols(basename+':'+str(len(symbs)))
-        for i, s in enumerate(symbs):
-            expr = expr.subs({s: dummies[i]})
-        return expr
-
-
-    def _getitem_syntaxify(self, scode, basename, token, offset=None, dim=0):
-        if self.syntax == 'C': assert dim == 0 # C does not support broadcasting
-        offset_str = '{0:+d}'.format(offset) if offset != None else ''
-        tgt = {'C':token+r'[\1'+offset_str+']',
-               'F':token+'('+':,'*dim+r'\1'+offset_str+')',
-        }.get(self.syntax)
-        return re.sub(basename+'(\d+)', tgt, scode)
 
 
     def _write_code(self):
@@ -283,6 +300,9 @@ class C_Code(Generic_Code):
     C code class
     """
 
+    default_integer = 'int'
+    default_real = 'double'
+
     syntax = 'C'
     CompilerRunner = CCompilerRunner
 
@@ -291,6 +311,10 @@ class F90_Code(Generic_Code):
     """
     Fortran 90 code class
     """
+
+    # Assume `use iso_c_binding`
+    default_integer = 'integer(c_int)'
+    default_real = 'real(c_double)'
 
     syntax = 'F'
     CompilerRunner = FortranCompilerRunner

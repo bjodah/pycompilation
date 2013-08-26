@@ -24,7 +24,19 @@ def find_binary_of_command(candidates):
         candidates))
 
 
-def defaultnamedtuple(name, args, defaults):
+def defaultnamedtuple(name, args, defaults=None):
+    """
+    defaultnamedtuple returns a new subclass of Tuple with named fields
+    and a constructor with implicit default values.
+
+    >>> Body = namedtuple('Body', 'x y z density', (1.0,))
+    >>> Body.__doc__
+    SOMETHING
+    >>> b = Body(10, z=3, y=5)
+    >>> b._asdict()
+    {'densidty': 1.0, 'x': 10, 'y': 5, 'z': 3}
+    """
+    if defaults == None: defaults = ()
     nt = namedtuple(name, args)
     kw_order = args.split()
     nargs = len(kw_order)
