@@ -177,7 +177,7 @@ class CCompilerRunner(CompilerRunner):
         'icc': {
             'pic': ('-fPIC',),
             'fast': ('-fast',),
-            'openmp': ('-openmp'),
+            'openmp': ('-openmp',),
             'warn': ('-Wall',),
             'c99': ('-std=c99',),
         }
