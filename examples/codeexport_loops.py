@@ -17,7 +17,7 @@ def get_idxs(exprs):
         assert len(expr.lhs) == 1
         add_if_Idx(expr.lhs)
         for atom in expr.rhs.atoms():
-            add_if_Idx(atom)
+            idxs.union(add_if_Idx(atom))
     return idxs
 
 

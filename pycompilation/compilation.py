@@ -177,12 +177,9 @@ class CCompilerRunner(CompilerRunner):
         'icc': {
             'pic': ('-fPIC',),
             'fast': ('-fast',),
-<<<<<<< HEAD
             'openmp': ('-openmp'),
-=======
             'warn': ('-Wall',),
             'c99': ('-std=c99',),
->>>>>>> e1f0564b39b8dba708104ece33e9743683664e40
         }
     }
 
@@ -298,7 +295,8 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
     return so_file
 
 def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
-                     full_module_name=None, only_update=False):
+                     full_module_name=None, only_update=False,
+                     **kwargs):
     from Cython.Compiler.Main import (
         default_options, compile, CompilationOptions
     )
@@ -326,6 +324,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                 dstfile, src))
             return
     cy_options = CompilationOptions(default_options)
+    cy_options.__dict__.update(kwargs)
     if logger: logger.info("Cythonizing {} to {}".format(src, dstfile))
     compile([src], cy_options, full_module_name=full_module_name)
     if os.path.abspath(os.path.dirname(src)) != os.path.abspath(dstdir):
@@ -352,20 +351,29 @@ def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None,
     inc_dirs = [get_python_inc()]
     inc_dirs.extend(kwargs.pop('inc_dirs',[]))
 
+    flags = kwargs.pop('flags', [])
+
+    compiler = kwargs.pop('compiler', None)
+
     cc = " ".join(get_config_vars(
         'CC', 'BASECFLAGS', 'OPT', 'CFLAGSFORSHARED'))
-    compilern, flags = cc.split()[0], cc.split()[1:]
+
+    if not compiler:
+        compilern, du_flags = cc.split()[0], cc.split()[1:]
+        flags += du_flags
+
     runner =CCompilerRunner([src], dst, flags, run_linker=False,
                             compiler=[compilern]*2, cwd=cwd,
                             inc_dirs=inc_dirs, metadir=metadir,
-                            logger=logger)
+                            logger=logger, **kwargs)
     runner.run()
     return dst
 
 
 def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
             logger=None, full_module_name=None, only_update=False,
-            metadir=None, include_numpy=False, **kwargs):
+            metadir=None, include_numpy=False, inc_dirs=None,
+            cy_kwargs=None, gdb=False, **kwargs):
     """
     Conveninece function
 
@@ -390,19 +398,23 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     interm_c_file = os.path.join(
         abs_interm_c_dir, os.path.basename(pyxpath)[:-4] + '.c')
 
+    cy_kwargs = cy_kwargs or {}
+    if gdb:
+        cy_kwargs['gdb_debug'] = True
+        cy_kwargs['output_dir'] = cwd
     simple_cythonize(pyxpath, dstdir=interm_c_dir,
                      cwd=cwd, logger=logger,
                      full_module_name=full_module_name,
-                     only_update=only_update)
+                     only_update=only_update, **cy_kwargs)
 
-    inc_dirs = kwargs.pop('inc_dirs', [])
+    inc_dirs = inc_dirs or []
     if include_numpy:
         import numpy
         numpy_inc_dir = numpy.get_include()
         if not numpy_inc_dir in inc_dirs:
             inc_dirs.append(numpy_inc_dir)
 
-    return simple_py_c_compile_obj(interm_c_file, dst=objpath,
-                            cwd=cwd, logger=logger,
-                            only_update=only_update, metadir=metadir,
-                            inc_dirs=inc_dirs)
+    return simple_py_c_compile_obj(
+        interm_c_file, dst=objpath, cwd=cwd, logger=logger,
+        only_update=only_update, metadir=metadir,
+        inc_dirs=inc_dirs, **kwargs)
