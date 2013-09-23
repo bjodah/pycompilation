@@ -14,7 +14,7 @@ class CompilationError(Exception):
     pass
 
 
-class CompilerRunner(HasMetaData):
+class CompilerRunner():
 
     flag_dict = None # Lazy unified defaults for compilers
     metadata_filename = '.metadata_CompilerRunner'
@@ -28,7 +28,7 @@ class CompilerRunner(HasMetaData):
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
                  lib_dirs=None,
                  options=None, logger=None, preferred_vendor=None,
-                 metadir=None):
+                 metadir=None, lib_options=None):
         """
         Arguments:
         - `preferred_vendor`: key of compiler_dict
@@ -54,7 +54,7 @@ class CompilerRunner(HasMetaData):
         else:
             # Find a compiler
             preferred_compiler_name = self.compiler_dict.get(
-                preferred_vendor,None)
+                preferred_vendor, None)
             self.compiler_name, self.compiler_binary = \
                 self.find_compiler(preferred_compiler_name)
             if self.compiler_binary == None:
@@ -66,6 +66,7 @@ class CompilerRunner(HasMetaData):
         self.libs = libs or []
         self.lib_dirs = lib_dirs or []
         self.options = options or []
+        self.lib_options = lib_options or []
         self.logger = logger
         if run_linker:
             # both gcc and ifort have '-c' flag for disabling linker
@@ -82,6 +83,10 @@ class CompilerRunner(HasMetaData):
         for opt in self.options:
             extra_flags = self.flag_dict[self.compiler_name][opt]
             self.flags.extend(extra_flags)
+
+        for lib_opt in self.lib_options:
+            extra_libs = self.lib_dict[self.compiler_name][lib_opt]
+            self.libs.extend(extra_libs)
 
 
     @classmethod
@@ -121,21 +126,28 @@ class CompilerRunner(HasMetaData):
         return name, path
 
 
+    @property
+    def cmd(self):
+        """
+        The command below covers most cases, if you need
+        someting more complex subclass property(cmd)
+        """
+        return [self.compiler_binary] + self.flags + \
+            self.sources + ['-l'+x for x in self.libs]
+
+
     def run(self):
         self.flags = uniquify(self.flags)
 
         # Append output flag and name to tail of flags
         self.flags.extend(['-o', self.out])
 
-        self.cmd = [self.compiler_binary] + self.flags + \
-                   self.sources + ['-l'+x for x in self.libs]
         # Logging
         if self.logger: self.logger.info(
                 'Executing: "{}"'.format(' '.join(self.cmd)))
 
         p = subprocess.Popen(self.cmd,
                              cwd=self.cwd,
-                             #shell=True,
                              stdin= subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT
@@ -158,7 +170,7 @@ class CompilerRunner(HasMetaData):
         return self.cmd_outerr, self.cmd_returncode
 
 
-class CCompilerRunner(CompilerRunner):
+class CCompilerRunner(CompilerRunner, HasMetaData):
 
     compiler_dict = {
         'gnu': 'gcc',
@@ -185,8 +197,44 @@ class CCompilerRunner(CompilerRunner):
 
     compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel'}
 
+class CppCompilerRunner(CompilerRunner, HasMetaData):
 
-class FortranCompilerRunner(CompilerRunner):
+    compiler_dict = {
+        'gnu': 'g++',
+        'intel': 'icpc',
+    }
+
+    flag_dict = {
+        'g++': {
+            'c++11': ('-std=c++0x',),
+        },
+        'icpc': {
+            'c++11': ('-std=c++11',),
+        }
+    }
+
+    lib_dict = {
+        'g++': {
+            'fortran': ('gfortranbegin', 'gfortran'),
+            'openmp': ('gomp',),
+        }
+    }
+
+    compiler_name_vendor_mapping = {'g++': 'gnu', 'icpc': 'intel'}
+
+    def __init__(self, *args, **kwargs):
+        # g++ takes a superset of gcc arguments
+        new_flag_dict = {
+            'g++': CCompilerRunner.flag_dict['gcc'],
+            'icpc': CCompilerRunner.flag_dict['icc'],
+        }
+        for key in ['g++', 'icpc']:
+            new_flag_dict[key].update(self.flag_dict[key])
+        self.flag_dict = new_flag_dict
+        super(CppCompilerRunner, self).__init__(*args, **kwargs)
+
+
+class FortranCompilerRunner(CompilerRunner, HasMetaData):
 
     compiler_dict = {
         'gnu': 'gfortran',
@@ -195,11 +243,11 @@ class FortranCompilerRunner(CompilerRunner):
 
     flag_dict = {
         'gfortran': {
-            'f90': ('-std=f2008',),
+            'f2008': ('-std=f2008',),
             'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
         },
         'ifort': {
-            'f90': ('-stand f08',),
+            'f2008': ('-stand f08',),
             'warn': ('-warn', 'all',),
         }
     }
@@ -274,14 +322,15 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
          file in `obj_files` but with the extensino '.so' (Unix
          conventin, Windows users may patch and make a pull request).
     """
+    libs = libs or []
+
     from distutils.sysconfig import get_config_vars
-    pylibs = [x[2:] for x in get_config_vars(
+    libs += [x[2:] for x in get_config_vars(
         'BLDLIBRARY')[0].split() if x.startswith('-l')]
     cc = get_config_vars('BLDSHARED')[0]
 
     so_file = so_file or os.path.splitext(obj_files[-1])[0]+'.so'
 
-    libs = libs or []
 
     # We want something like: gcc, ['-pthread', ...
     compilername, flags = cc.split()[0], cc.split()[1:]
@@ -289,7 +338,7 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
         obj_files,
         so_file, flags,
         cwd=cwd,
-        libs=libs+pylibs,
+        libs=libs,
         **kwargs)
     runner.run()
     return so_file
@@ -314,7 +363,8 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     # if not dstdir:
     #     dstdir = os.path.dirname(src)
 
-    c_name = os.path.splitext(os.path.basename(src))[0] + '.c'
+    ext = '.cpp' if kwargs['cplus'] else '.c'
+    c_name = os.path.splitext(os.path.basename(src))[0] + ext
 
     dstfile = os.path.join(dstdir, c_name)
 
@@ -335,11 +385,14 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     os.chdir(ori_dir)
 
 
-def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None,
-                            only_update=False, metadir=None, **kwargs):
+def simple_py_c_compile_obj(src, CompilerRunner_=None,
+                            dst=None, cwd=None, logger=None,
+                            only_update=False, metadir=None, cplus=False,
+                            **kwargs):
     """
     Use e.g. on *.c file written from `simple_cythonize`
     """
+    CompilerRunner_ = CompilerRunner_ or (CppCompilerRunner if cplus else CCompilerRunner)
     dst = dst or os.path.splitext(src)[0] + '.o'
     if only_update:
         if not missing_or_other_newer(dst, src):
@@ -361,8 +414,11 @@ def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None,
     if not compiler:
         compilern, du_flags = cc.split()[0], cc.split()[1:]
         flags += du_flags
+        if cplus:
+            compilern = CppCompilerRunner.compiler_dict[
+                CCompilerRunner.compiler_name_vendor_mapping[compilern]]
 
-    runner =CCompilerRunner([src], dst, flags, run_linker=False,
+    runner =CompilerRunner_([src], dst, flags, run_linker=False,
                             compiler=[compilern]*2, cwd=cwd,
                             inc_dirs=inc_dirs, metadir=metadir,
                             logger=logger, **kwargs)
@@ -370,12 +426,39 @@ def simple_py_c_compile_obj(src, dst=None, cwd=None, logger=None,
     return dst
 
 
+def fort2obj(srcpath, CompilerRunner_=FortranCompilerRunner,
+             objpath=None, **kwargs):
+    """
+    Convenience function
+    """
+    objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
+    options = kwargs.pop('options', ['pic', 'fast', 'warn', 'f2008'])
+    run_linker = kwargs.pop('run_linker', False)
+    runner = CompilerRunner_([srcpath], objpath, options=options,
+                             run_linker=run_linker, **kwargs)
+    runner.run()
+    return objpath
+
+def cpp2obj(srcpath, CompilerRunner_=CppCompilerRunner,
+            objpath=None, **kwargs):
+    """
+    Convenience function
+    """
+    objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
+    options = kwargs.pop('options', ['pic', 'fast', 'warn', 'c++11'])
+    run_linker = kwargs.pop('run_linker', False)
+    runner = CompilerRunner_([srcpath], objpath, options=options,
+                             run_linker=run_linker, **kwargs)
+    runner.run()
+    return objpath
+
+
 def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
             logger=None, full_module_name=None, only_update=False,
             metadir=None, include_numpy=False, inc_dirs=None,
-            cy_kwargs=None, gdb=False, **kwargs):
+            cy_kwargs=None, gdb=False, cplus=False, **kwargs):
     """
-    Conveninece function
+    Convenience function
 
     If cwd is specified, pyxpath and dst are taken to be relative
     If only_update is set to `True` the modification time is checked
@@ -395,13 +478,16 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     abs_interm_c_dir = get_abspath(interm_c_dir, cwd=cwd)
     assure_dir(abs_interm_c_dir)
 
+    ext = '.cpp' if cplus else '.c'
     interm_c_file = os.path.join(
-        abs_interm_c_dir, os.path.basename(pyxpath)[:-4] + '.c')
+        abs_interm_c_dir, os.path.basename(pyxpath)[:-4] + ext)
 
     cy_kwargs = cy_kwargs or {}
+    cy_kwargs['output_dir'] = cwd
+    cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
-        cy_kwargs['output_dir'] = cwd
+
     simple_cythonize(pyxpath, dstdir=interm_c_dir,
                      cwd=cwd, logger=logger,
                      full_module_name=full_module_name,
@@ -417,4 +503,4 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     return simple_py_c_compile_obj(
         interm_c_file, dst=objpath, cwd=cwd, logger=logger,
         only_update=only_update, metadir=metadir,
-        inc_dirs=inc_dirs, **kwargs)
+        inc_dirs=inc_dirs, cplus=cplus, **kwargs)
