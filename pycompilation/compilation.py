@@ -14,7 +14,7 @@ class CompilationError(Exception):
     pass
 
 
-class CompilerRunner():
+class CompilerRunner(object):
 
     flag_dict = None # Lazy unified defaults for compilers
     metadata_filename = '.metadata_CompilerRunner'
@@ -191,7 +191,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     flag_dict = {
         'gcc': {
             'pic': ('-fPIC',),
-            'warn': ('-Wall', '-Wextra'),
+            'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
             'fast': ('-O3', '-march=native', '-ffast-math',
                      '-funroll-loops'),
             'c99': ('-std=c99',),
@@ -240,7 +240,10 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
             'icpc': CCompilerRunner.flag_dict['icc'],
         }
         for key in ['g++', 'icpc']:
-            new_flag_dict[key].update(self.flag_dict[key])
+            fltr = _mk_flag_filter(key, cplus=True)
+            keys, values = zip(*self.flag_dict[key].items())
+            new_flag_dict[key].update(dict(zip(
+                keys, filter(fltr, values))))
         self.flag_dict = new_flag_dict
         super(CppCompilerRunner, self).__init__(*args, **kwargs)
 
@@ -381,7 +384,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
 
     if only_update:
         if not missing_or_other_newer(dstfile, src):
-            logger.info('{} newer than {}, did not compile'.format(
+            logger.info('{} newer than {}, did not re-cythonize.'.format(
                 dstfile, src))
             os.chdir(ori_dir)
             return
@@ -396,6 +399,17 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                     dstdir)
     os.chdir(ori_dir)
 
+
+def _mk_flag_filter(cmplr_name, cplus=False):
+    if cmplr_name == 'g++':
+        def fltr(x):
+            if cplus:
+                if "Wstrict-prototypes" in x: return False
+            return True
+    else:
+        def fltr(x):
+            return True
+    return fltr
 
 def simple_py_c_compile_obj(src, CompilerRunner_=None,
                             dst=None, cwd=None, logger=None,
@@ -425,10 +439,11 @@ def simple_py_c_compile_obj(src, CompilerRunner_=None,
 
     if not compiler:
         compilern, du_flags = cc.split()[0], cc.split()[1:]
-        flags += du_flags
         if cplus:
             compilern = CppCompilerRunner.compiler_dict[
                 CCompilerRunner.compiler_name_vendor_mapping[compilern]]
+        du_flags = filter(_mk_flag_filter(compilern, cplus=cplus), du_flags)
+        flags += du_flags
 
     runner =CompilerRunner_([src], dst, flags, run_linker=False,
                             compiler=[compilern]*2, cwd=cwd,
