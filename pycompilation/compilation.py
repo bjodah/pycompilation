@@ -140,7 +140,7 @@ class CompilerRunner(object):
     def run(self):
         if self.only_update:
             for src in self.sources:
-                if missing_or_other_newer(self.out, src):
+                if missing_or_other_newer(self.out, src, cwd=self.cwd):
                     break
             else:
                 self.logger.info(('No source newer than {}.'+\
@@ -191,7 +191,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     flag_dict = {
         'gcc': {
             'pic': ('-fPIC',),
-            'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
+            'warn': ('-Wall', '-Wextra'), # '-Wimplicit-interface'),
             'fast': ('-O3', '-march=native', '-ffast-math',
                      '-funroll-loops'),
             'c99': ('-std=c99',),
@@ -236,11 +236,11 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
     def __init__(self, *args, **kwargs):
         # g++ takes a superset of gcc arguments
         new_flag_dict = {
-            'g++': CCompilerRunner.flag_dict['gcc'],
-            'icpc': CCompilerRunner.flag_dict['icc'],
+            'g++': CCompilerRunner.flag_dict['gcc'].copy(),
+            'icpc': CCompilerRunner.flag_dict['icc'].copy(),
         }
         for key in ['g++', 'icpc']:
-            fltr = _mk_flag_filter(key, cplus=True)
+            fltr = _mk_flag_filter(key)
             keys, values = zip(*self.flag_dict[key].items())
             new_flag_dict[key].update(dict(zip(
                 keys, filter(fltr, values))))
@@ -275,8 +275,8 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     def __init__(self, *args, **kwargs):
         # gfortran takes a superset of gcc arguments
         new_flag_dict = {
-            'gfortran': CCompilerRunner.flag_dict['gcc'],
-            'ifort': CCompilerRunner.flag_dict['icc'],
+            'gfortran': CCompilerRunner.flag_dict['gcc'].copy(),
+            'ifort': CCompilerRunner.flag_dict['icc'].copy(),
         }
         for key in ['gfortran', 'ifort']:
             new_flag_dict[key].update(self.flag_dict[key])
@@ -368,26 +368,23 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     cwd = cwd or '.'
     dstdir = dstdir or '.'
 
-    if cwd:
-        ori_dir = os.getcwd()
-    else:
-        ori_dir = '.'
-    os.chdir(cwd)
-
-    # if not dstdir:
-    #     dstdir = os.path.dirname(src)
-
     ext = '.cpp' if kwargs['cplus'] else '.c'
     c_name = os.path.splitext(os.path.basename(src))[0] + ext
 
     dstfile = os.path.join(dstdir, c_name)
 
     if only_update:
-        if not missing_or_other_newer(dstfile, src):
+        if not missing_or_other_newer(dstfile, src, cwd=cwd):
             logger.info('{} newer than {}, did not re-cythonize.'.format(
                 dstfile, src))
-            os.chdir(ori_dir)
             return
+
+    if cwd:
+        ori_dir = os.getcwd()
+    else:
+        ori_dir = '.'
+    os.chdir(cwd)
+
     cy_options = CompilationOptions(default_options)
     cy_options.__dict__.update(kwargs)
     if logger: logger.info("Cythonizing {} to {}".format(src, dstfile))
@@ -400,16 +397,18 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     os.chdir(ori_dir)
 
 
-def _mk_flag_filter(cmplr_name, cplus=False):
-    if cmplr_name == 'g++':
+def _mk_flag_filter(cmplr_name):
+    not_welcome = {'g++': ("Wimplicit-interface",)}#"Wstrict-prototypes",)}
+    if cmplr_name in not_welcome:
         def fltr(x):
-            if cplus:
-                if "Wstrict-prototypes" in x: return False
+            for nw in not_welcome[cmplr_name]:
+                if nw in x: return False
             return True
     else:
         def fltr(x):
             return True
     return fltr
+
 
 def simple_py_c_compile_obj(src, CompilerRunner_=None,
                             dst=None, cwd=None, logger=None,
@@ -421,7 +420,7 @@ def simple_py_c_compile_obj(src, CompilerRunner_=None,
     CompilerRunner_ = CompilerRunner_ or (CppCompilerRunner if cplus else CCompilerRunner)
     dst = dst or os.path.splitext(src)[0] + '.o'
     if only_update:
-        if not missing_or_other_newer(dst, src):
+        if not missing_or_other_newer(dst, src, cwd=cwd):
             logger.info('{} newer than {}, did not compile'.format(
                 dst, src))
             return dst
@@ -442,7 +441,7 @@ def simple_py_c_compile_obj(src, CompilerRunner_=None,
         if cplus:
             compilern = CppCompilerRunner.compiler_dict[
                 CCompilerRunner.compiler_name_vendor_mapping[compilern]]
-        du_flags = filter(_mk_flag_filter(compilern, cplus=cplus), du_flags)
+        du_flags = filter(_mk_flag_filter(compilern), du_flags)
         flags += du_flags
 
     runner =CompilerRunner_([src], dst, flags, run_linker=False,
