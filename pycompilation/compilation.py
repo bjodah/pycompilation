@@ -26,9 +26,9 @@ class CompilerRunner():
 
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
-                 lib_dirs=None,
-                 options=None, logger=None, preferred_vendor=None,
-                 metadir=None, lib_options=None):
+                 lib_dirs=None, options=None, logger=None,
+                 preferred_vendor=None, metadir=None, lib_options=None,
+                 only_update=False):
         """
         Arguments:
         - `preferred_vendor`: key of compiler_dict
@@ -68,6 +68,7 @@ class CompilerRunner():
         self.options = options or []
         self.lib_options = lib_options or []
         self.logger = logger
+        self.only_update = only_update
         if run_linker:
             # both gcc and ifort have '-c' flag for disabling linker
             self.flags = filter(lambda x: x != '-c', self.flags)
@@ -137,6 +138,16 @@ class CompilerRunner():
 
 
     def run(self):
+        if self.only_update:
+            for src in self.sources:
+                if missing_or_other_newer(self.out, src):
+                    break
+            else:
+                self.logger.info(('No source newer than {}.'+\
+                             ' Did not compile').format(
+                                 self.out))
+                return
+
         self.flags = uniquify(self.flags)
 
         # Append output flag and name to tail of flags
@@ -372,6 +383,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
         if not missing_or_other_newer(dstfile, src):
             logger.info('{} newer than {}, did not compile'.format(
                 dstfile, src))
+            os.chdir(ori_dir)
             return
     cy_options = CompilationOptions(default_options)
     cy_options.__dict__.update(kwargs)
@@ -457,6 +469,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
             logger=None, full_module_name=None, only_update=False,
             metadir=None, include_numpy=False, inc_dirs=None,
             cy_kwargs=None, gdb=False, cplus=False, **kwargs):
+
     """
     Convenience function
 
