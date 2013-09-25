@@ -465,6 +465,20 @@ def fort2obj(srcpath, CompilerRunner_=FortranCompilerRunner,
     runner.run()
     return objpath
 
+def c2obj(srcpath, CompilerRunner_=CCompilerRunner,
+            objpath=None, **kwargs):
+    """
+    Convenience function
+    """
+    objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
+    options = kwargs.pop('options', ['pic', 'fast', 'warn', 'c99'])
+    run_linker = kwargs.pop('run_linker', False)
+    runner = CompilerRunner_([srcpath], objpath, options=options,
+                             run_linker=run_linker, **kwargs)
+    runner.run()
+    return objpath
+
+
 def cpp2obj(srcpath, CompilerRunner_=CppCompilerRunner,
             objpath=None, **kwargs):
     """
