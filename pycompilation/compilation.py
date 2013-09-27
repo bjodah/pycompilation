@@ -14,6 +14,31 @@ class CompilationError(Exception):
     pass
 
 
+def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
+    class Reader(HasMetaData):
+        metadata_filename = '.metadata_CompilerRunner'
+
+    reader = Reader()
+
+    if not vendor:
+        try:
+            vendor = reader.get_from_metadata_file(metadir, 'vendor')
+        except IOError:
+            vendor = 'gnu'
+
+    if vendor == 'intel':
+        if cplus:
+            return FortranCompilerRunner, {'flags': ['-nofor_main', '-cxxlib']}, vendor
+        else:
+            return FortranCompilerRunner, {'flags': ['-nofor_main']}, vendor
+    elif vendor == 'gnu':
+        if cplus:
+            return CppCompilerRunner, {'lib_options': ['fortran']}, vendor
+        else:
+            return CCompilerRunner, {'lib_options': ['fortran']}, vendor
+            
+
+
 class CompilerRunner(object):
 
     flag_dict = None # Lazy unified defaults for compilers
@@ -53,10 +78,8 @@ class CompilerRunner(object):
                         self.compiler_name])
         else:
             # Find a compiler
-            preferred_compiler_name = self.compiler_dict.get(
-                preferred_vendor, None)
             self.compiler_name, self.compiler_binary = \
-                self.find_compiler(preferred_compiler_name)
+                self.find_compiler(preferred_vendor)
             if self.compiler_binary == None:
                 raise RuntimeError(
                     "No compiler found (searched: {})".format(
@@ -79,6 +102,7 @@ class CompilerRunner(object):
             self.flags.append('-I'+inc_dir)
 
         for lib_dir in self.lib_dirs:
+            print(self.lib_dirs)
             self.flags.append('-L'+lib_dir)
 
         for opt in self.options:
@@ -91,7 +115,7 @@ class CompilerRunner(object):
 
 
     @classmethod
-    def find_compiler(cls, preferred_compiler_name=None,
+    def find_compiler(cls, preferred_vendor=None,
                       metadir=None):
         """
         Identify a suitable C/fortran/other compiler
@@ -103,27 +127,28 @@ class CompilerRunner(object):
         make the class save choice there in a file with
         cls.metadata_filename as name.
         """
-        if metadir:
-            try:
-                pcn = cls.compiler_dict.get(cls.get_from_metadata_file(
-                    metadir, 'vendor'),None)
-                preferred_compiler_name = preferred_compiler_name or pcn
-            except IOError:
-                pass
-        candidates = cls.flag_dict.keys()
-        if preferred_compiler_name:
-            if preferred_compiler_name in candidates:
-                # Duplication doesn't matter
-                candidates = [preferred_compiler_name] + candidates
-        name, path = find_binary_of_command(candidates)
-        if metadir:
-            if cls.logger: logger.info(
-                    'Wrote choice of compiler to: metadir')
+        if not preferred_vendor:
+            if metadir:
+                try:
+                    pcn = cls.compiler_dict.get(cls.get_from_metadata_file(
+                        metadir, 'vendor'),None)
+                    preferred_vendor = preferred_vendor or pcn
+                    used_metafile = True
+                except IOError:
+                    used_metafile = False
+        candidates = cls.compiler_dict.keys()
+        if preferred_vendor:
+            if preferred_vendor in candidates:
+                candidates = [preferred_vendor]+candidates
+        name, path = find_binary_of_command([cls.compiler_dict[x] for x in candidates])
+        if metadir and not used_metafile:
             cls.save_to_metadata_file(metadir, 'compiler',
                                       (name, path))
             cls.save_to_metadata_file(
                 metadir, 'vendor',
                 cls.compiler_name_vendor_mapping[name])
+            if cls.logger: logger.info(
+                    'Wrote choice of compiler to: metadir')
         return name, path
 
 
@@ -157,11 +182,18 @@ class CompilerRunner(object):
         if self.logger: self.logger.info(
                 'Executing: "{}"'.format(' '.join(self.cmd)))
 
-        p = subprocess.Popen(self.cmd,
+        env = os.environ.copy()
+        env['PWD'] = self.cwd
+
+        # NOTE: the ' '.join(self.cmd) part seems to be necessary for
+        # intel compilers
+        p = subprocess.Popen(' '.join(self.cmd), #['ls', '-lart'],#self.cmd,
+                             shell=True,
                              cwd=self.cwd,
                              stdin= subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT
+                             stderr=subprocess.STDOUT,
+                             env=env,
         )
         self.cmd_outerr = p.communicate()[0]
         self.cmd_returncode = p.returncode
@@ -170,7 +202,7 @@ class CompilerRunner(object):
         if self.cmd_returncode != 0:
             raise CompilationError(
                 ("Error executing '{}' in {}. "+\
-                 "Commanded exited with status {}"+\
+                 "Command exited with status {}"+\
                  " after givning the following output: {}").format(
                      ' '.join(self.cmd), self.cwd, self.cmd_returncode,
                      str(self.cmd_outerr)))
@@ -228,6 +260,9 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         'g++': {
             'fortran': ('gfortranbegin', 'gfortran'),
             'openmp': ('gomp',),
+        },
+        'icpc': {
+            'openmp': ('iomp5',),
         }
     }
 
@@ -337,25 +372,43 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
          conventin, Windows users may patch and make a pull request).
     """
     libs = libs or []
+    so_file = so_file or os.path.splitext(obj_files[-1])[0]+'.so'
 
     from distutils.sysconfig import get_config_vars
+    inc_dirs = kwargs.pop('inc_dirs', [])
+    lib_dirs = kwargs.pop('lib_dirs', [])
+    lds = filter(lambda x: len(x)>0, os.environ.get('LD_LIBRARY_PATH', '').split(':'))
+    lib_dirs.extend(lds)
     libs += [x[2:] for x in get_config_vars(
         'BLDLIBRARY')[0].split() if x.startswith('-l')]
     cc = get_config_vars('BLDSHARED')[0]
 
-    so_file = so_file or os.path.splitext(obj_files[-1])[0]+'.so'
 
 
     # We want something like: gcc, ['-pthread', ...
     compilername, flags = cc.split()[0], cc.split()[1:]
+
+    # Grab inc_dirs
+    flags = filter(lambda x: not x.startswith('-I'), flags)
+    inc_dirs += filter(lambda x: x.startswith('-I'), flags)
+
+    # Grab lib_dirs
+    flags = filter(lambda x: not x.startswith('-L'), flags)
+    lib_dirs += filter(lambda x: x.startswith('-L'), flags)
+
+    flags.extend(kwargs.pop('flags',[]))
+
     runner = CompilerRunner_(
         obj_files,
         so_file, flags,
         cwd=cwd,
+        inc_dirs=inc_dirs,
         libs=libs,
+        lib_dirs=lib_dirs,
         **kwargs)
     runner.run()
     return so_file
+
 
 def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                      full_module_name=None, only_update=False,
@@ -410,46 +463,53 @@ def _mk_flag_filter(cmplr_name):
     return fltr
 
 
-def simple_py_c_compile_obj(src, CompilerRunner_=None,
-                            dst=None, cwd=None, logger=None,
-                            only_update=False, metadir=None, cplus=False,
+def simple_py_c_compile_obj(src, #CompilerRunner_=None,
+                            #objpath=None, cwd=None, logger=None,
+                            #only_update=False, metadir=None, 
+                            cplus=False,
                             **kwargs):
     """
     Use e.g. on *.c file written from `simple_cythonize`
     """
-    CompilerRunner_ = CompilerRunner_ or (CppCompilerRunner if cplus else CCompilerRunner)
-    dst = dst or os.path.splitext(src)[0] + '.o'
-    if only_update:
-        if not missing_or_other_newer(dst, src, cwd=cwd):
-            logger.info('{} newer than {}, did not compile'.format(
-                dst, src))
-            return dst
+    # CompilerRunner_ = CompilerRunner_ or (CppCompilerRunner if cplus else CCompilerRunner)
+    # objpath = objpath or os.path.splitext(src)[0] + '.o'
+    # if only_update:
+    #     if not missing_or_other_newer(objpath, src, cwd=cwd):
+    #         logger.info('{} newer than {}, did not compile'.format(
+    #             objpath, src))
+    #         return objpath
 
     from distutils.sysconfig import get_python_inc, get_config_vars
     inc_dirs = [get_python_inc()]
     inc_dirs.extend(kwargs.pop('inc_dirs',[]))
 
-    flags = kwargs.pop('flags', [])
+    if cplus:
+        return cpp2obj(src, inc_dirs=inc_dirs, **kwargs)
+    else:
+        return c2obj(src, inc_dirs=inc_dirs, **kwargs)
 
-    compiler = kwargs.pop('compiler', None)
+    # flags = kwargs.pop('flags', [])
 
-    cc = " ".join(get_config_vars(
-        'CC', 'BASECFLAGS', 'OPT', 'CFLAGSFORSHARED'))
+    # compiler = kwargs.pop('compiler', None)
 
-    if not compiler:
-        compilern, du_flags = cc.split()[0], cc.split()[1:]
-        if cplus:
-            compilern = CppCompilerRunner.compiler_dict[
-                CCompilerRunner.compiler_name_vendor_mapping[compilern]]
-        du_flags = filter(_mk_flag_filter(compilern), du_flags)
-        flags += du_flags
+    # cc = " ".join(get_config_vars(
+    #     'CC', 'BASECFLAGS', 'OPT', 'CFLAGSFORSHARED'))
 
-    runner =CompilerRunner_([src], dst, flags, run_linker=False,
-                            compiler=[compilern]*2, cwd=cwd,
-                            inc_dirs=inc_dirs, metadir=metadir,
-                            logger=logger, **kwargs)
-    runner.run()
-    return dst
+    # if not compiler:
+    #     compilern, du_flags = cc.split()[0], cc.split()[1:]
+    #     if cplus:
+    #         compilern = CppCompilerRunner.compiler_dict[
+    #             CCompilerRunner.compiler_name_vendor_mapping[compilern]]
+    #     du_flags = filter(_mk_flag_filter(compilern), du_flags)
+    #     flags += du_flags
+
+    # runner =CompilerRunner_([src], objpath, flags, run_linker=False,
+    #                         #compiler=[compilern]*2, 
+    #                         cwd=cwd,
+    #                         inc_dirs=inc_dirs, metadir=metadir,
+    #                         logger=logger, **kwargs)
+    # runner.run()
+    # return objpath
 
 
 def fort2obj(srcpath, CompilerRunner_=FortranCompilerRunner,
@@ -541,7 +601,8 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         if not numpy_inc_dir in inc_dirs:
             inc_dirs.append(numpy_inc_dir)
 
+    print(metadir)
     return simple_py_c_compile_obj(
-        interm_c_file, dst=objpath, cwd=cwd, logger=logger,
+        interm_c_file, objpath=objpath, cwd=cwd, logger=logger,
         only_update=only_update, metadir=metadir,
         inc_dirs=inc_dirs, cplus=cplus, **kwargs)
