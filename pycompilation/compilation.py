@@ -36,7 +36,7 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
             return CppCompilerRunner, {'lib_options': ['fortran']}, vendor
         else:
             return CCompilerRunner, {'lib_options': ['fortran']}, vendor
-            
+
 
 
 class CompilerRunner(object):
@@ -465,7 +465,7 @@ def _mk_flag_filter(cmplr_name):
 
 def simple_py_c_compile_obj(src, #CompilerRunner_=None,
                             #objpath=None, cwd=None, logger=None,
-                            #only_update=False, metadir=None, 
+                            #only_update=False, metadir=None,
                             cplus=False,
                             **kwargs):
     """
@@ -504,7 +504,7 @@ def simple_py_c_compile_obj(src, #CompilerRunner_=None,
     #     flags += du_flags
 
     # runner =CompilerRunner_([src], objpath, flags, run_linker=False,
-    #                         #compiler=[compilern]*2, 
+    #                         #compiler=[compilern]*2,
     #                         cwd=cwd,
     #                         inc_dirs=inc_dirs, metadir=metadir,
     #                         logger=logger, **kwargs)
@@ -601,8 +601,9 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         if not numpy_inc_dir in inc_dirs:
             inc_dirs.append(numpy_inc_dir)
 
-    print(metadir)
+    flags = kwargs.pop('flags', [])
+    flags.extend(['-fno-strict-aliasing'])
     return simple_py_c_compile_obj(
         interm_c_file, objpath=objpath, cwd=cwd, logger=logger,
         only_update=only_update, metadir=metadir,
-        inc_dirs=inc_dirs, cplus=cplus, **kwargs)
+        inc_dirs=inc_dirs, cplus=cplus, flags=flags, **kwargs)

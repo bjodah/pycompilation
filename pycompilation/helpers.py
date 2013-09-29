@@ -38,7 +38,7 @@ def defaultnamedtuple(name, args, defaults=None):
     """
     if defaults == None: defaults = ()
     nt = namedtuple(name, args)
-    kw_order = args.split()
+    kw_order = args.split() if isinstance(args, basestring) else args
     nargs = len(kw_order)
 
     def factory(*args, **kwargs):
