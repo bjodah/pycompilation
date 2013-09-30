@@ -18,6 +18,8 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
     class Reader(HasMetaData):
         metadata_filename = '.metadata_CompilerRunner'
 
+    vendor = vendor or os.environ.get('COMPILER_VENDOR', None)
+
     reader = Reader()
 
     if not vendor:
