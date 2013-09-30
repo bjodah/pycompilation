@@ -6,7 +6,7 @@ import shutil
 
 from .util import HasMetaData, missing_or_other_newer, get_abspath
 from .helpers import (
-    find_binary_of_command, uniquify, assure_dir,
+    find_binary_of_command, uniquify, assure_dir, expand_collection_in_dict
     )
 
 
@@ -51,6 +51,27 @@ class CompilerRunner(object):
 
     logger = None
 
+    # x86-64, *nix, MKLROOT env. set, dynamic linking
+    # This is _really_ ugly and not portable in any manner.
+    vendor_options_dict = {
+        'intel': {
+            'lapack': {
+                'linkline': [],#'${MKLROOT}/lib/intel64/libmkl_blas95_lp64.a',
+                             #'${MKLROOT}/lib/intel64/libmkl_lapack95_lp64.a'],
+                'libs': ['mkl_avx', 'mkl_intel_lp64', 'mkl_core','mkl_intel_thread', 'pthread', 'm'],
+                'lib_dirs': ['${MKLROOT}/lib/intel64'],
+                'inc_dirs': ['${MKLROOT}/include/intel64/lp64', '${MKLROOT}/include'],
+                'flags': ['-openmp'],
+            }
+        },
+        'gnu':{
+            'lapack': {
+                'libs': ['lapack', 'blas']
+            }
+        }
+    }
+
+
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
                  lib_dirs=None, options=None, logger=None,
@@ -80,7 +101,7 @@ class CompilerRunner(object):
                         self.compiler_name])
         else:
             # Find a compiler
-            self.compiler_name, self.compiler_binary = \
+            self.compiler_name, self.compiler_binary, self.compiler_vendor = \
                 self.find_compiler(preferred_vendor)
             if self.compiler_binary == None:
                 raise RuntimeError(
@@ -100,20 +121,26 @@ class CompilerRunner(object):
         else:
             self.flags.append('-c')
 
-        for inc_dir in self.inc_dirs:
-            self.flags.append('-I'+inc_dir)
-
-        for lib_dir in self.lib_dirs:
-            print(self.lib_dirs)
-            self.flags.append('-L'+lib_dir)
-
         for opt in self.options:
-            extra_flags = self.flag_dict[self.compiler_name][opt]
-            self.flags.extend(extra_flags)
+            self.flags.extend(self.flag_dict.get(
+                self.compiler_name, {}).get(opt,[]))
 
+            # extend based on vendor options dict
+            def extend(l, k):
+                l.extend(self.vendor_options_dict.get(
+                self.compiler_vendor,{}).get(
+                    opt, {}).get(
+                        k, []))
+            extend(self.flags, 'flags')
+            extend(self.inc_dirs, 'inc_dirs')
+            extend(self.lib_dirs, 'lib_dirs')
+            extend(self.libs, 'libs')
+            extend(self.sources, 'linkline')
+
+        # libs
         for lib_opt in self.lib_options:
-            extra_libs = self.lib_dict[self.compiler_name][lib_opt]
-            self.libs.extend(extra_libs)
+            self.libs.extend(self.lib_dict[self.compiler_name][lib_opt])
+
 
 
     @classmethod
@@ -151,7 +178,7 @@ class CompilerRunner(object):
                 cls.compiler_name_vendor_mapping[name])
             if cls.logger: logger.info(
                     'Wrote choice of compiler to: metadir')
-        return name, path
+        return name, path, cls.compiler_name_vendor_mapping[name]
 
 
     @property
@@ -161,7 +188,10 @@ class CompilerRunner(object):
         someting more complex subclass property(cmd)
         """
         return [self.compiler_binary] + self.flags + \
-            self.sources + ['-l'+x for x in self.libs]
+            ['-I'+x for x in self.inc_dirs] +\
+            self.sources + \
+            ['-L'+x for x in self.lib_dirs] +\
+            ['-l'+x for x in self.libs]
 
 
     def run(self):
@@ -356,7 +386,11 @@ def compile_sources(files, CompilerRunner_=CCompilerRunner,
                 [f], dst, cwd=cwd, **kwargs)
             runner.run()
         else:
-            print("Found {}, did not recompile.".format(dst))
+            msg = "Found {}, did not recompile.".format(dst)
+            if 'logger' in kwargs:
+                kwargs['logger'].info(msg)
+            else:
+                print(msg)
     return dstpaths
 
 
@@ -396,7 +430,7 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
 
     # Grab lib_dirs
     flags = filter(lambda x: not x.startswith('-L'), flags)
-    lib_dirs += filter(lambda x: x.startswith('-L'), flags)
+    lib_dirs += [x[2:] for x in filter(lambda x: x.startswith('-L'), flags)]
 
     flags.extend(kwargs.pop('flags',[]))
 
@@ -514,45 +548,45 @@ def simple_py_c_compile_obj(src, #CompilerRunner_=None,
     # return objpath
 
 
-def fort2obj(srcpath, CompilerRunner_=FortranCompilerRunner,
-             objpath=None, **kwargs):
-    """
-    Convenience function
-    """
+
+def _src2obj(srcpath, CompilerRunner_, objpath, **kwargs):
     objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
-    options = kwargs.pop('options', ['pic', 'fast', 'warn', 'f2008'])
     run_linker = kwargs.pop('run_linker', False)
-    runner = CompilerRunner_([srcpath], objpath, options=options,
-                             run_linker=run_linker, **kwargs)
+    kwargs['options'] = kwargs.pop('options', ['pic', 'warn'])
+    expand_collection_in_dict(kwargs, 'options', kwargs.pop('extra_options', []))
+    runner = CompilerRunner_([srcpath], objpath, run_linker=run_linker, **kwargs)
     runner.run()
     return objpath
 
-def c2obj(srcpath, CompilerRunner_=CCompilerRunner,
-            objpath=None, **kwargs):
+
+def fort2obj(srcpath, CompilerRunner_=FortranCompilerRunner,
+          objpath=None, std=None, extra_options=None, **kwargs):
     """
     Convenience function
     """
-    objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
-    options = kwargs.pop('options', ['pic', 'fast', 'warn', 'c99'])
-    run_linker = kwargs.pop('run_linker', False)
-    runner = CompilerRunner_([srcpath], objpath, options=options,
-                             run_linker=run_linker, **kwargs)
-    runner.run()
-    return objpath
+    extra_options = extra_options or []
+    extra_options.append(std or 'f2008')
+    return _src2obj(srcpath, CompilerRunner_, objpath, extra_options=extra_options, **kwargs)
+
+
+def c2obj(srcpath, CompilerRunner_=CCompilerRunner,
+          objpath=None, std=None, extra_options=None, **kwargs):
+    """
+    Convenience function
+    """
+    extra_options = extra_options or []
+    extra_options.append(std or 'c99')
+    return _src2obj(srcpath, CompilerRunner_, objpath, extra_options=extra_options, **kwargs)
 
 
 def cpp2obj(srcpath, CompilerRunner_=CppCompilerRunner,
-            objpath=None, **kwargs):
+          objpath=None, std=None, extra_options=None, **kwargs):
     """
     Convenience function
     """
-    objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
-    options = kwargs.pop('options', ['pic', 'fast', 'warn', 'c++11'])
-    run_linker = kwargs.pop('run_linker', False)
-    runner = CompilerRunner_([srcpath], objpath, options=options,
-                             run_linker=run_linker, **kwargs)
-    runner.run()
-    return objpath
+    extra_options = extra_options or []
+    extra_options.append(std or 'c++11')
+    return _src2obj(srcpath, CompilerRunner_, objpath, extra_options=extra_options, **kwargs)
 
 
 def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,

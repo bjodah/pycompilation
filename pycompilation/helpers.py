@@ -11,6 +11,17 @@ def uniquify(l):
             result.append(x)
     return result
 
+def expand_collection_in_dict(d, key, new_items):
+    if key in d:
+        if isinstance(d[key], set):
+            map(d[key].add, new_items)
+        elif isinstance(d[key], list):
+            map(d[key].append, new_items)
+        else:
+            d[key] = d[key] + new_items
+    else:
+        d[key] = new_items
+
 
 def find_binary_of_command(candidates):
     """
