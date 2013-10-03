@@ -19,7 +19,6 @@ from pycompilation.codeexport import Loop
 </%def>
 
 
-
 void func(const int * const restrict bounds,
 	  const double * const restrict input,
 	  double * restrict output)

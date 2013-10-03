@@ -1,14 +1,17 @@
 from __future__ import print_function, division, absolute_import
 
-# For performance reasons it is preferable that the
-# numeric integration is performed in a compiled language
-# the codeexport module provide classes enabling FirstOrderODESystem
-# instances to be used as blueprint for generating, compiling
+# When a Sympy expressions needs to be evaluated it is,
+# for performance reasons, preferable that the
+# numerics are performed in a compiled language
+# the codeexport module provide classes enabling
+# templates to be used as blueprints for generating, compiling
 # and importing a binary which performs the computations.
+
 
 # Both C, C++ and Fortran is considered, but since
 # the codegeneration uses templates, one can easily extend
 # the functionality to other languages.
+
 
 # stdlib imports
 import tempfile
@@ -31,8 +34,8 @@ from .util import import_, render_mako_template_to
 from .compilation import FortranCompilerRunner, CCompilerRunner
 from .helpers import defaultnamedtuple
 
-Loop = defaultnamedtuple('Loop', ('counter', 'bounds_idx', 'body'), ())
 
+Loop = defaultnamedtuple('Loop', ('counter', 'bounds_idx', 'body'), ())
 
 def _dummify_expr(expr, basename, symbs):
     """
@@ -48,8 +51,8 @@ def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0):
     """
     Syntax is either 'C' or 'F'
     Example:
-    >>> syntaxify_getitem('C', 'y_i = x_i+i', 'yout', 'y')
-    'yout[i] = x_i+i'
+    >>> syntaxify_getitem('C', 'y_i = x_i+i;', 'yout', 'y')
+    'yout[i] = x_i+i;'
     """
     if syntax == 'C': assert dim == 0 # C does not support broadcasting
     offset_str = '{0:+d}'.format(offset) if offset != None else ''
@@ -57,7 +60,6 @@ def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0):
            'F':token+'('+':,'*dim+r'\1'+offset_str+')',
     }.get(syntax)
     return re.sub(basename+'(\d+)', tgt, scode)
-
 
 
 class Generic_Code(object):
@@ -328,7 +330,7 @@ class F90_Code(Generic_Code):
     def _get_module_files(self, files):
         names = []
         for f in files:
-            with open(os.path.join(self._basedir, f),'rt') as fh:
+            with open(os.path.join(self._basedir, f), 'rt') as fh:
                 for line in fh:
                     stripped_lower = line.strip().lower()
                     if stripped_lower.startswith('module'):
@@ -338,34 +340,3 @@ class F90_Code(Generic_Code):
     @property
     def binary_path(self):
         return os.path.join(self._tempdir, self._so_file)
-
-
-class Cython_Code(Generic_Code):
-    """
-    Uses Cython's build_ext and distutils
-    to simplify compilation
-    """
-
-    from Cython.Distutils import build_ext
-    from distutils.core import setup
-    from distutils.extension import Extension
-
-    def _compile(self):
-        sources = [os.path.join(
-            self._tempdir, os.path.basename(x).replace(
-                '_template', '')) for x \
-            in self._source_files]
-        setup(
-            script_name =  'DUMMY_SCRIPT_NAME',
-            script_args =  ['build_ext',  '--build-lib', self._tempdir],
-            include_dirs = self._include_dirs,
-            cmdclass = {'build_ext': build_ext},
-            ext_modules = [
-                Extension(
-                    self.extension_name,
-                    sources,
-                    libraries=self._libraries,
-                    library_dirs=self._library_dirs,
-                    include_dirs=self._include_dirs),
-                ]
-            )

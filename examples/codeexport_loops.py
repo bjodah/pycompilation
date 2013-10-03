@@ -34,6 +34,8 @@ def mk_recursive_loop(idxs, body):
 
 class ExampleCode(C_Code):
 
+    _templates = ['codeexport_loops_template.c']
+
     def __init__(self, exprs, *args, **kwargs):
         self._exprs = exprs
         self._idxs = get_idxs(exprs)
@@ -50,7 +52,11 @@ class ExampleCode(C_Code):
     def variables(self):
         expr_groups = []
         for idxs in sorted(self._expr_by_idx.keys, key=len):
-            expr_code = # something
+            dummy_groups = (
+                DummyGroup('argdummies', self._)
+            )
+            cse_defs_code, exprs_in_cse_code = self.get_cse_code(
+                self._expr_by_idx[idxs], 'cse', dummy_groups)
             expr_groups.append(mk_recursive_loop(idxs, expr_code))
         return {'expr_groups': expr_groups}
 
@@ -60,10 +66,10 @@ class ExampleCodeWrapper(Cython_Code):
 
 
 def make_callback():
-    i_bounds = sympy.symbols('i_lbound i_ubound', integer=True)
-    j_bounds = sympy.symbols('j_lbound j_ubound', integer=True)
-    i = sympy.Idx('i', i_bounds)
-    j = sympy.Idx('j', j_bounds)
+    i_bs = sympy.symbols('i_lb i_ub', integer=True)
+    j_bs = sympy.symbols('j_lb j_ub', integer=True)
+    i = sympy.Idx('i', i_bs)
+    j = sympy.Idx('j', j_bs)
 
     a_size = sympy.Symbol('a_size', integer=True)
     a = sympy.IndexedBase('a', shape=(a_size,))
@@ -81,14 +87,15 @@ def make_callback():
 
 def main(data):
     """
-    Show capabilities of codeexport when it comes to loop construction:
+    The purpose of of this demo is to show capabilities of
+    codeexport when it comes to loop construction:
 
-    x[i] = a[i]**i+c
-    y[j] = a[j]/c
+    x[i] = (a[i]/3-1)**i+c
+    y[j] = (a[j]/3-1)/c
     z    = c**2+a[d]
 
-    let i = i_lbound:i_ubound
-    let j = j_lbound:j_ubound
+    let i = i_lb:i_ub  # lower and upper bounds
+    let j = j_lb:j_ub
 
     where input variables are:
       int a_size, double a[a_size], double c, int d,
@@ -98,13 +105,14 @@ def main(data):
       x[i], y[j], z
     """
     cb = make_callback()
+
     data = {'a': np.linspace(3.0, 11.0, 7)
             'c': 3.14
             'd': 2
-            'i_lbound': 0,
-            'i_ubound': 7,
-            'j_lbound': 2,
-            'j_ubound': 5
+            'i_lb': 0,
+            'i_ub': 7,
+            'j_lb': 2,
+            'j_ub': 5
             }
     result = cb(**data)
     print(result)

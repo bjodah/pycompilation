@@ -394,8 +394,8 @@ def compile_sources(files, CompilerRunner_=CCompilerRunner,
     return dstpaths
 
 
-def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
-                  so_file=None, cwd=None, libs=None, **kwargs):
+def compile_py_so(obj_files, CompilerRunner_=None,
+                  so_file=None, cwd=None, libs=None, cplus=False, **kwargs):
     """
     Generate shared object for importing
 
@@ -410,6 +410,12 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
     libs = libs or []
     so_file = so_file or os.path.splitext(obj_files[-1])[0]+'.so'
 
+    if not CompilerRunner_:
+        if cplus:
+            CompilerRunner_ = CppCompilerRunner
+        else:
+            CompilerRunner_ = CCompilerRunner
+
     from distutils.sysconfig import get_config_vars
     inc_dirs = kwargs.pop('inc_dirs', [])
     lib_dirs = kwargs.pop('lib_dirs', [])
@@ -419,24 +425,21 @@ def compile_py_so(obj_files, CompilerRunner_=CCompilerRunner,
         'BLDLIBRARY')[0].split() if x.startswith('-l')]
     cc = get_config_vars('BLDSHARED')[0]
 
-
-
     # We want something like: gcc, ['-pthread', ...
     compilername, flags = cc.split()[0], cc.split()[1:]
 
     # Grab inc_dirs
-    flags = filter(lambda x: not x.startswith('-I'), flags)
     inc_dirs += filter(lambda x: x.startswith('-I'), flags)
+    flags = filter(lambda x: not x.startswith('-I'), flags)
 
     # Grab lib_dirs
-    flags = filter(lambda x: not x.startswith('-L'), flags)
     lib_dirs += [x[2:] for x in filter(lambda x: x.startswith('-L'), flags)]
+    flags = filter(lambda x: not x.startswith('-L'), flags)
 
     flags.extend(kwargs.pop('flags',[]))
 
     runner = CompilerRunner_(
-        obj_files,
-        so_file, flags,
+        obj_files, so_file, flags,
         cwd=cwd,
         inc_dirs=inc_dirs,
         libs=libs,
