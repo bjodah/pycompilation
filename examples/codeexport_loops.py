@@ -5,6 +5,42 @@ import sympy
 
 from pycompilation import Cython_Code
 
+
+def get_statements(eq, taken=None):
+    """
+    Returns a list of Eq objects were lhs is variable to make
+    assignment to and rhs is expr to be evaluated.
+
+    Unwinds Sum() and Product() objects into loops
+    """
+    stmnts = []
+    # maybe make taken to be a set
+    taken = taken or []
+    taken += [x for x in eq.atoms() if x.is_Symbol and x not in taken]
+    i = 0
+    def new_symb():
+        base = '_symb_tmp__'
+        i += 1
+        candidate = sympy.Symbol(base+str(i))
+        if not candidate in taken:
+            taken.append(candidate)
+            return candidate
+        else:
+            i += 1
+            return new_symb()
+
+    def argify(a):
+        if arg.is_Symbol:
+            return a
+        else:
+            if isinstance(a, sympy.Sum):
+                s = new_symb()
+                expr, loopv = a.args[0], a.args[1]
+                sub_stmnts(get_statements(expr), taken)
+                stmnts.append(Loop(sub_stmnts, loopv))
+    stmnts.extend(type(stmnts)([argify(arg) for arg in stmts.args]))
+
+
 def get_idxs(exprs):
     """
     Finds sympy.tensor.indexed.Idx instances and returns them.
@@ -18,7 +54,7 @@ def get_idxs(exprs):
         add_if_Idx(expr.lhs)
         for atom in expr.rhs.atoms():
             idxs.union(add_if_Idx(atom))
-    return idxs
+    return sorted(idxs)
 
 
 def mk_recursive_loop(idxs, body):
@@ -41,10 +77,10 @@ class ExampleCode(C_Code):
         self._idxs = get_idxs(exprs)
         self._exprs_idxs = [
             tuple(sorted([
-                i for i in self._idxs if i in expr.atoms()
+                i for i in self._idxs if i in expr.lhs.atoms()
             ])) for expr in self._exprs]
         self._expr_by_idx = DefaultDict(list)
-        for expr, idxs in zip(self._exprs, self._exprs_idxs):
+        for idxs, expr in zip(self._exprs_idxs, self._exprs):
             self._expr_by_idx[idxs].append(expr)
         super(ExampleCode, self).__init__(*args, **kwargs)
 
@@ -66,6 +102,9 @@ class ExampleCodeWrapper(Cython_Code):
 
 
 def make_callback():
+    """
+    For performance: Choose least strided index to have highest alphabetic order
+    """
     i_bs = sympy.symbols('i_lb i_ub', integer=True)
     j_bs = sympy.symbols('j_lb j_ub', integer=True)
     i = sympy.Idx('i', i_bs)
@@ -75,9 +114,9 @@ def make_callback():
     a = sympy.IndexedBase('a', shape=(a_size,))
 
     exprs = [
-        x[i]=(a[i]/3-1)**i+c,
-        y[j]=(a[j]/3-1)/c,
-        z = c**2+a[d]
+        Eq(x[i],(a[i]/3-1)**i+c),
+        Eq(y[j],(sympy.Sum(a[i], i, j-2, j+2)/3-1)/c),
+        Eq(z, c**2+a[d])
     ]
 
     example_code = ExampleCode(exprs)
@@ -85,13 +124,13 @@ def make_callback():
     return example_code.compile_and_import_binary().my_callback
 
 
-def main(data):
+def main():
     """
     The purpose of of this demo is to show capabilities of
     codeexport when it comes to loop construction:
 
     x[i] = (a[i]/3-1)**i+c
-    y[j] = (a[j]/3-1)/c
+    y[j] = (Sum(a[i], i, j-2, j+2)/3-1)/c
     z    = c**2+a[d]
 
     let i = i_lb:i_ub  # lower and upper bounds
@@ -107,17 +146,14 @@ def main(data):
     cb = make_callback()
 
     data = {'a': np.linspace(3.0, 11.0, 7)
-            'c': 3.14
-            'd': 2
-            'i_lb': 0,
-            'i_ub': 7,
-            'j_lb': 2,
-            'j_ub': 5
+            'c': 3.14,
+            'd': 2,
+            'bounds': {'i': (0,7),
+                       'j': (2,5)}
             }
     result = cb(**data)
     print(result)
 
 
 if __name__ == '__main__':
-    main({'a_size': 10,
-          ''})
+    main()

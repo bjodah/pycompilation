@@ -37,7 +37,8 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
         if cplus:
             return CppCompilerRunner, {'lib_options': ['fortran']}, vendor
         else:
-            return CCompilerRunner, {'lib_options': ['fortran']}, vendor
+            return FortranCompilerRunner, {}, vendor
+#            return CCompilerRunner, {'lib_options': ['fortran']}, vendor
 
 
 
@@ -351,11 +352,11 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         super(FortranCompilerRunner, self).__init__(*args, **kwargs)
 
 
-def compile_sources(files, CompilerRunner_=CCompilerRunner,
+def compile_sources(files, CompilerRunner_=None,
                     destdir=None, cwd=None,
                     update_only=True, **kwargs):
     """
-    Distutils does not allow to use .o files in compilation
+    Distutils does not allow to use object files in compilation
     (see http://bugs.python.org/issue5372)
     hence the compilation of source files cannot be cached
     unless doing something like what compile_sources does.
@@ -378,11 +379,23 @@ def compile_sources(files, CompilerRunner_=CCompilerRunner,
     dstpaths = []
     for f in files:
         name, ext = os.path.splitext(os.path.basename(f))
+        if CompilerRunner_ == None:
+            if ext == '.c':
+                CompilerRunner__ = CCompilerRunner
+            elif ext in ('.cpp', '.cxx', '.cc'):
+                CompilerRunner__ = CppCompilerRunner
+            elif ext.lower() in ('.for', '.f', '.f90'):
+                CompilerRunner__ = FortranCompilerRunner
+            else:
+                raise KeyError('Could not deduce compiler from extension: {}'.format(
+                    ext))
+        else:
+            CompilerRunner__ = CompilerRunner_
         fname = name+'.o' # .ext -> .o
         dst = os.path.join(destdir, fname)
         dstpaths.append(dst)
         if missing_or_other_newer(dst, f, cwd=cwd):
-            runner = CompilerRunner_(
+            runner = CompilerRunner__(
                 [f], dst, cwd=cwd, **kwargs)
             runner.run()
         else:
@@ -395,7 +408,8 @@ def compile_sources(files, CompilerRunner_=CCompilerRunner,
 
 
 def compile_py_so(obj_files, CompilerRunner_=None,
-                  so_file=None, cwd=None, libs=None, cplus=False, **kwargs):
+                  so_file=None, cwd=None, libs=None,
+                  cplus=False, **kwargs):
     """
     Generate shared object for importing
 
@@ -552,7 +566,7 @@ def simple_py_c_compile_obj(src, #CompilerRunner_=None,
 
 
 
-def _src2obj(srcpath, CompilerRunner_, objpath, **kwargs):
+def _src2obj(srcpath, CompilerRunner_, objpath=None, **kwargs):
     objpath = objpath or os.path.splitext(os.path.basename(srcpath))[0] + '.o'
     run_linker = kwargs.pop('run_linker', False)
     kwargs['options'] = kwargs.pop('options', ['pic', 'warn'])

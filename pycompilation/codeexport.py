@@ -31,7 +31,7 @@ import sympy
 # Intrapackage imports
 from .helpers import defaultnamedtuple
 from .util import import_, render_mako_template_to
-from .compilation import FortranCompilerRunner, CCompilerRunner
+from .compilation import FortranCompilerRunner, CCompilerRunner, compile_py_so, _src2obj
 from .helpers import defaultnamedtuple
 
 
@@ -196,7 +196,6 @@ class Generic_Code(object):
             render_mako_template_to(srcpath, outpath, subs)
             self._written_files.append(outpath)
 
-
     def compile_and_import_binary(self):
         self._compile()
         return import_(self.binary_path)
@@ -231,35 +230,19 @@ class Generic_Code(object):
     def _compile_obj(self, sources=None):
         sources = sources or self._source_files
         for f in sources:
-            outpath = os.path.splitext(f)[0]+'.o'
-            runner = self.CompilerRunner(
-                f, outpath, run_linker=False,
+            _src2obj(f, self.CompilerRunner,
                 cwd=self._tempdir,
                 inc_dirs=self._include_dirs,
-                options=['pic', 'warn', 'fast'],
                 preferred_vendor=self.preferred_vendor,
                 logger=self.logger)
-            runner.run()
 
 
     def _compile_so(self):
-        # Generate shared object for importing:
-        from distutils.sysconfig import get_config_vars
-        pylibs = [x[2:] for x in get_config_vars(
-            'BLDLIBRARY')[0].split() if x.startswith('-l')]
-        cc = get_config_vars('BLDSHARED')[0]
-        # We want something like: gcc, ['-pthread', ...
-        compilername, flags = cc.split()[0], cc.split()[1:]
-        runner = self.CompilerRunner(
-            self._obj_files,
-            self._so_file, flags,
-            cwd=self._tempdir,
-            inc_dirs=self._include_dirs,
-            libs=self._libraries+pylibs,
-            lib_dirs=self._library_dirs,
-            preferred_vendor=self.preferred_vendor,
-            logger=self.logger)
-        runner.run()
+        compile_py_so(self._obj_files, so_file=self._so_file,
+                      cwd=self._tempdir, libs=self._libraries,
+                      lib_dirs=self._library_dirs, preferred_vendor=self.preferred_vendor,
+                      logger=self.logger
+        )
 
 
 DummyGroup = defaultnamedtuple(

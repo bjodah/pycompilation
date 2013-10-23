@@ -27,7 +27,8 @@ def run_sub_setup(cwd, cb, logger):
     os.chdir(ori_dir)
 
 
-def render_mako_template_to(template, outpath, subsd, only_update=False, cwd=None):
+def render_mako_template_to(template, outpath, subsd, only_update=False, cwd=None,
+                            prev_subsd=None):
     """
     template: either string of path or file like obj.
 
@@ -38,8 +39,10 @@ def render_mako_template_to(template, outpath, subsd, only_update=False, cwd=Non
         template = os.path.join(cwd, template)
         outpath = os.path.join(cwd, outpath)
 
-    if not missing_or_other_newer(outpath, template):
-        return
+    if only_update:
+        if prev_subsd == subsd and \
+           not missing_or_other_newer(outpath, template):
+            return
 
     if hasattr(template, 'read'):
         # set in-file handle to provided template
