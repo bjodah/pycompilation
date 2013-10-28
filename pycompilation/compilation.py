@@ -52,17 +52,21 @@ class CompilerRunner(object):
 
     logger = None
 
-    # x86-64, *nix, MKLROOT env. set, dynamic linking
+    # http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+    # MKL 11.1 x86-64, *nix, MKLROOT env. set, dynamic linking
     # This is _really_ ugly and not portable in any manner.
     vendor_options_dict = {
         'intel': {
             'lapack': {
-                'linkline': [],#'${MKLROOT}/lib/intel64/libmkl_blas95_lp64.a',
-                             #'${MKLROOT}/lib/intel64/libmkl_lapack95_lp64.a'],
-                'libs': ['mkl_avx', 'mkl_intel_lp64', 'mkl_core','mkl_intel_thread', 'pthread', 'm'],
+                'linkline': ['-Wl,--start-group '+\
+                             ' ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a'+\
+                             ' ${MKLROOT}/lib/intel64/libmkl_core.a'+\
+                             ' ${MKLROOT}/lib/intel64/libmkl_intel_thread.a'+\
+                             ' -Wl,--end-group'],
+                'libs': ['pthread', 'm'],
                 'lib_dirs': ['${MKLROOT}/lib/intel64'],
-                'inc_dirs': ['${MKLROOT}/include/intel64/lp64', '${MKLROOT}/include'],
-                'flags': ['-openmp'],
+                'inc_dirs': ['${MKLROOT}/include'],
+                'flags': ['-DMKL_ILP64', '-openmp'],
             }
         },
         'gnu':{
