@@ -108,7 +108,7 @@ class HasMetaData(object):
             d = pickle.load(open(fullpath,'r'))
             return d[key] #.get(cls._get_metadata_key(key), None)
         else:
-            raise IOError("No such file: {}".format(fullpath))
+            raise IOError("No such file: {0}".format(fullpath))
 
     @classmethod
     def save_to_metadata_file(cls, dirpath, key, value):
@@ -149,9 +149,9 @@ def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True):
         fpath = os.path.join(cwd, f) if cwd else f
         if not os.path.exists(fpath):
             import urllib2
-            print('Downloading: {}'.format(websrc+f))
+            print('Downloading: {0}'.format(websrc+f))
             open(fpath, 'wt').write(urllib2.urlopen(websrc+f).read())
         fmd5 = md5_of_file(fpath).hexdigest()
         if fmd5 != md5sums[f]:
-            raise ValueError("""Warning: MD5 sum of {} differs from that provided in setup.py.
-            i.e. {} vs. {}""".format(f, fmd5, md5sums[f]))
+            raise ValueError("""Warning: MD5 sum of {0} differs from that provided in setup.py.
+            i.e. {1} vs. {2}""".format(f, fmd5, md5sums[f]))

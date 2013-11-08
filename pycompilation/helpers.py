@@ -1,6 +1,10 @@
 import os
 
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 from distutils.spawn import find_executable
 

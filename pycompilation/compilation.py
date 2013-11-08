@@ -36,6 +36,14 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
         else:
             return (FortranCompilerRunner,
                     {'flags': ['-nofor_main']}, vendor)
+    elif vendor == 'cray':
+        if cplus:
+            return (CppCompilerRunner,
+                    {}, vendor)
+        else:
+            return (FortranCompilerRunner,
+                    {}, vendor)
+        
     elif vendor == 'gnu':
         if cplus:
             return (CppCompilerRunner,
@@ -79,14 +87,17 @@ class CompilerRunner(object):
                 'lib_dirs': ['${MKLROOT}/lib/intel64'],
                 'inc_dirs': ['${MKLROOT}/include'],
                 'flags': ['-DMKL_ILP64', '-openmp'],
-            }
-        },
+                }
+            },
         'gnu':{
             'lapack': {
                 'libs': ['lapack', 'blas']
-            }
+                }
+            },
+        'cray':{
+            'lapack': {}
+            },
         }
-    }
 
 
     def __init__(self, sources, out, flags=None, run_linker=True,
@@ -123,7 +134,7 @@ class CompilerRunner(object):
                     preferred_vendor)
             if self.compiler_binary == None:
                 raise RuntimeError(
-                    "No compiler found (searched: {})".format(
+                    "No compiler found (searched: {0})".format(
                         ', '.join(self.compiler_dict.values())))
         self.cwd = cwd
         self.inc_dirs = inc_dirs or []
@@ -221,7 +232,7 @@ class CompilerRunner(object):
                 if missing_or_other_newer(self.out, src, cwd=self.cwd):
                     break
             else:
-                self.logger.info(('No source newer than {}.'+\
+                self.logger.info(('No source newer than {0}.'+\
                              ' Did not compile').format(
                                  self.out))
                 return
@@ -233,7 +244,7 @@ class CompilerRunner(object):
 
         # Logging
         if self.logger: self.logger.info(
-                'Executing: "{}"'.format(' '.join(self.cmd)))
+                'Executing: "{0}"'.format(' '.join(self.cmd)))
 
         env = os.environ.copy()
         env['PWD'] = self.cwd
@@ -254,9 +265,9 @@ class CompilerRunner(object):
         # Error handling
         if self.cmd_returncode != 0:
             raise CompilationError(
-                ("Error executing '{}' in {}. "+\
-                 "Command exited with status {}"+\
-                 " after givning the following output: {}").format(
+                ("Error executing '{0}' in {1}. "+\
+                 "Command exited with status {2}"+\
+                 " after givning the following output: {3}").format(
                      ' '.join(self.cmd), self.cwd, self.cmd_returncode,
                      str(self.cmd_outerr)))
 
@@ -271,6 +282,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     compiler_dict = {
         'gnu': 'gcc',
         'intel': 'icc',
+        'cray': 'cc',
     }
 
     flag_dict = {
@@ -288,16 +300,25 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
             'openmp': ('-openmp',),
             'warn': ('-Wall',),
             'c99': ('-std=c99',),
-        }
+        },
+        'cc': { # assume PrgEnv-gnu (not portable, future improvement..)
+            'pic': ('-fPIC',),
+            'warn': ('-Wall', '-Wextra'),
+            'fast': ('-O3', '-march=native', '-ffast-math',
+                     '-funroll-loops'),
+            'c99': ('-std=c99',),
+            'openmp': ('-fopenmp',),
+        },
     }
 
-    compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel'}
+    compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel', 'cc': 'cray'}
 
 class CppCompilerRunner(CompilerRunner, HasMetaData):
 
     compiler_dict = {
         'gnu': 'g++',
         'intel': 'icpc',
+        'cray': 'CC',
     }
 
     flag_dict = {
@@ -306,6 +327,9 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         },
         'icpc': {
             'c++11': ('-std=c++11',),
+        },
+        'CC': { # assume PrgEnv-gnu (not portable, future improvement..)
+            'c++11': ('-std=c++98',),
         }
     }
 
@@ -316,18 +340,24 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         },
         'icpc': {
             'openmp': ('iomp5',),
-        }
+        },
+        'cray': {# assume PrgEnv-gnu (not portable, future improvement..)
+            'fortran': ('gfortranbegin', 'gfortran'),
+            'openmp': ('gomp',),
+        },
+        
     }
 
-    compiler_name_vendor_mapping = {'g++': 'gnu', 'icpc': 'intel'}
+    compiler_name_vendor_mapping = {'g++': 'gnu', 'icpc': 'intel', 'CC': 'cray'}
 
     def __init__(self, *args, **kwargs):
         # g++ takes a superset of gcc arguments
         new_flag_dict = {
             'g++': CCompilerRunner.flag_dict['gcc'].copy(),
             'icpc': CCompilerRunner.flag_dict['icc'].copy(),
+            'CC': CCompilerRunner.flag_dict['cc'].copy(),
         }
-        for key in ['g++', 'icpc']:
+        for key in ['g++', 'icpc', 'CC']:
             fltr = _mk_flag_filter(key)
             keys, values = zip(*self.flag_dict[key].items())
             new_flag_dict[key].update(dict(zip(
@@ -341,6 +371,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     compiler_dict = {
         'gnu': 'gfortran',
         'intel': 'ifort',
+        'cray': 'ftn',
     }
 
     flag_dict = {
@@ -351,12 +382,17 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         'ifort': {
             'f2008': ('-stand f08',),
             'warn': ('-warn', 'all',),
-        }
+        },
+        'ftn': { # assume PrgEnv-gnu (not portable, future improvement..)
+            'f2008': ('-std=f2008',),
+            'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
+        },
     }
 
     compiler_name_vendor_mapping = {
         'gfortran': 'gnu',
-        'ifort': 'intel'
+        'ifort': 'intel',
+        'ftn': 'cray',
     }
 
 
@@ -365,8 +401,9 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         new_flag_dict = {
             'gfortran': CCompilerRunner.flag_dict['gcc'].copy(),
             'ifort': CCompilerRunner.flag_dict['icc'].copy(),
+            'ftn': CCompilerRunner.flag_dict['cc'].copy(),
         }
-        for key in ['gfortran', 'ifort']:
+        for key in ['gfortran', 'ifort', 'ftn']:
             new_flag_dict[key].update(self.flag_dict[key])
         self.flag_dict = new_flag_dict
         super(FortranCompilerRunner, self).__init__(*args, **kwargs)
@@ -408,7 +445,7 @@ def compile_sources(files, CompilerRunner_=None,
                 CompilerRunner__ = FortranCompilerRunner
             else:
                 raise KeyError('Could not deduce compiler from" + \
-                " extension: {}'.format(
+                " extension: {0}'.format(
                     ext))
         else:
             CompilerRunner__ = CompilerRunner_
@@ -420,7 +457,7 @@ def compile_sources(files, CompilerRunner_=None,
                 [f], dst, cwd=cwd, **kwargs)
             runner.run()
         else:
-            msg = "Found {}, did not recompile.".format(dst)
+            msg = "Found {0}, did not recompile.".format(dst)
             if 'logger' in kwargs:
                 kwargs['logger'].info(msg)
             else:
@@ -514,7 +551,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     if only_update:
         if not missing_or_other_newer(dstfile, src, cwd=cwd):
             logger.info(
-                '{} newer than {}, did not re-cythonize.'.format(
+                '{0} newer than {1}, did not re-cythonize.'.format(
                 dstfile, src))
             return
 
@@ -526,7 +563,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
 
     cy_options = CompilationOptions(default_options)
     cy_options.__dict__.update(kwargs)
-    if logger: logger.info("Cythonizing {} to {}".format(src, dstfile))
+    if logger: logger.info("Cythonizing {0} to {1}".format(src, dstfile))
     compile([src], cy_options, full_module_name=full_module_name)
     if os.path.abspath(os.path.dirname(
             src)) != os.path.abspath(dstdir):
