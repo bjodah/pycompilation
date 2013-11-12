@@ -116,7 +116,7 @@ class Generic_Code(object):
         elif self.syntax == 'F':
             self.wcode = partial(sympy.fcode, source_format='free')
 
-        self._basedir = self._basedir or os.path.dirname(__file__)
+        self._basedir = self._basedir or '.'
 
         if tempdir:
             self._tempdir = tempdir
@@ -157,7 +157,7 @@ class Generic_Code(object):
         return {}
 
 
-    def as_arrayified_code(self, expr, dummy_groups):
+    def as_arrayified_code(self, expr, dummy_groups=()):
         """
         >>> self.as_arrayified_code(f(x)**2+y, ('funcdummies', [f(x)], 'y', 1, 0))
         """
