@@ -78,7 +78,7 @@ class Generic_Code(object):
     CompilerRunner = None # Set to a subclass of compilation.CompilerRunner
 
     syntax = None
-    preferred_vendor = 'gnu'
+    #preferred_vendor = 'gnu'
     tempdir_basename = 'generic_code'
     _basedir = None
     _cached_files = None
@@ -89,6 +89,7 @@ class Generic_Code(object):
     extension_name = 'generic_extension'
     so_file = None
     extension_name = None
+    compilation_options = None
 
     list_attributes = (
         '_written_files', # Track files which are written
@@ -100,6 +101,7 @@ class Generic_Code(object):
         'inc_dirs', # -I
         'libs',    # -l
         'lib_dirs', # -L
+        'defmacros',
     )
 
     def __init__(self, tempdir=None, save_temp=False, logger=None):
@@ -241,10 +243,12 @@ class Generic_Code(object):
         sources = sources or self.source_files
         for f in sources:
             _src2obj(f, self.CompilerRunner,
-                cwd=self._tempdir,
-                inc_dirs=self.inc_dirs,
-                preferred_vendor=self.preferred_vendor,
-                logger=self.logger)
+                     cwd=self._tempdir,
+                     inc_dirs=self.inc_dirs,
+                     extra_options=self.compilation_options,
+                     #preferred_vendor=self.preferred_vendor,
+                     metadir=self._tempdir,
+                     logger=self.logger)
 
 
     def _compile_so(self, **kwargs):
@@ -252,7 +256,9 @@ class Generic_Code(object):
                       so_file=self.so_file,
                       cwd=self._tempdir, libs=self.libs,
                       lib_dirs=self.lib_dirs,
-                      preferred_vendor=self.preferred_vendor,
+                      defmacros=self.defmacros,
+                      #preferred_vendor=self.preferred_vendor,
+                      metadir=self._tempdir,
                       logger=self.logger, **kwargs
         )
 

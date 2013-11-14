@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import os
 import subprocess
 import shutil
+import re
 
 from .util import HasMetaData, missing_or_other_newer, get_abspath
 from .helpers import (
@@ -36,14 +37,14 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
         else:
             return (FortranCompilerRunner,
                     {'flags': ['-nofor_main']}, vendor)
-    elif vendor == 'cray':
+    elif vendor == 'cray-gnu':
         if cplus:
             return (CppCompilerRunner,
                     {}, vendor)
         else:
             return (FortranCompilerRunner,
                     {}, vendor)
-        
+
     elif vendor == 'gnu':
         if cplus:
             return (CppCompilerRunner,
@@ -86,7 +87,8 @@ class CompilerRunner(object):
                 'libs': ['pthread', 'm'],
                 'lib_dirs': ['${MKLROOT}/lib/intel64'],
                 'inc_dirs': ['${MKLROOT}/include'],
-                'flags': ['-DMKL_ILP64', '-openmp'],
+                'flags': ['-openmp'],
+                'def_macros': ['MKL_ILP64'],
                 }
             },
         'gnu':{
@@ -94,7 +96,7 @@ class CompilerRunner(object):
                 'libs': ['lapack', 'blas']
                 }
             },
-        'cray':{
+        'cray-gnu':{
             'lapack': {}
             },
         }
@@ -102,7 +104,7 @@ class CompilerRunner(object):
 
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
-                 lib_dirs=None, options=None, logger=None,
+                 lib_dirs=None, options=None, defmacros=None, logger=None,
                  preferred_vendor=None, metadir=None, lib_options=None,
                  only_update=False):
         """
@@ -129,14 +131,16 @@ class CompilerRunner(object):
                         self.compiler_name])
         else:
             # Find a compiler
+            print('self.metadir',self.metadir)
             self.compiler_name, self.compiler_binary, \
                 self.compiler_vendor = self.find_compiler(
-                    preferred_vendor)
+                    preferred_vendor, metadir=self.metadir)
             if self.compiler_binary == None:
                 raise RuntimeError(
                     "No compiler found (searched: {0})".format(
                         ', '.join(self.compiler_dict.values())))
         self.cwd = cwd
+        self.defmacros = defmacros or []
         self.inc_dirs = inc_dirs or []
         self.libs = libs or []
         self.lib_dirs = lib_dirs or []
@@ -161,6 +165,7 @@ class CompilerRunner(object):
                     opt, {}).get(
                         k, []))
             extend(self.flags, 'flags')
+            extend(self.defmacros, 'defmacors')
             extend(self.inc_dirs, 'inc_dirs')
             extend(self.lib_dirs, 'lib_dirs')
             extend(self.libs, 'libs')
@@ -186,22 +191,26 @@ class CompilerRunner(object):
         make the class save choice there in a file with
         cls.metadata_filename as name.
         """
+        used_metafile = False
         if not preferred_vendor:
             if metadir:
                 try:
-                    pcn = cls.compiler_dict.get(
-                        cls.get_from_metadata_file(
-                            metadir, 'vendor'),None)
-                    preferred_vendor = preferred_vendor or pcn
+                    preferred_vendor = cls.get_from_metadata_file(
+                        metadir, 'vendor')
+                    #pcn = cls.compiler_dict.get(preferred_vendor, None)
                     used_metafile = True
                 except IOError:
-                    used_metafile = False
+                    pass
         candidates = cls.compiler_dict.keys()
         if preferred_vendor:
             if preferred_vendor in candidates:
                 candidates = [preferred_vendor]+candidates
+            else:
+                raise ValueError("Unknown vendor {}".format(
+                    preferred_vendor))
         name, path = find_binary_of_command([
             cls.compiler_dict[x] for x in candidates])
+
         if metadir and not used_metafile:
             cls.save_to_metadata_file(metadir, 'compiler',
                                       (name, path))
@@ -219,11 +228,20 @@ class CompilerRunner(object):
         The command below covers most cases, if you need
         someting more complex subclass property(cmd)
         """
-        return [self.compiler_binary] + self.flags + \
-            ['-I'+x for x in self.inc_dirs] +\
-            self.sources + \
-            ['-L'+x for x in self.lib_dirs] +\
-            ['-l'+x for x in self.libs]
+        cmd = [self.compiler_binary] +\
+              self.flags + \
+              ['-D'+x for x in self.defmacros] +\
+              ['-I'+x for x in self.inc_dirs] +\
+              self.sources + \
+              ['-L'+x for x in self.lib_dirs] +\
+              ['-l'+x for x in self.libs]
+        counted = []
+        for envvar in re.findall('\$\{(\w+)\}', ' '.join(cmd)):
+            if os.getenv(envvar) == None:
+                if not envvar in counted:
+                    counted.append(envvar)
+                    self.logger.warn("environment variable '{}' undefined.'".format(envvar))
+        return cmd
 
 
     def run(self):
@@ -282,7 +300,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     compiler_dict = {
         'gnu': 'gcc',
         'intel': 'icc',
-        'cray': 'cc',
+        'cray-gnu': 'cc',
     }
 
     flag_dict = {
@@ -311,14 +329,14 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
         },
     }
 
-    compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel', 'cc': 'cray'}
+    compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel', 'cc': 'cray-gnu'}
 
 class CppCompilerRunner(CompilerRunner, HasMetaData):
 
     compiler_dict = {
         'gnu': 'g++',
         'intel': 'icpc',
-        'cray': 'CC',
+        'cray-gnu': 'CC',
     }
 
     flag_dict = {
@@ -341,14 +359,14 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         'icpc': {
             'openmp': ('iomp5',),
         },
-        'cray': {# assume PrgEnv-gnu (not portable, future improvement..)
+        'cray-gnu': {# assume PrgEnv-gnu (not portable, future improvement..)
             'fortran': ('gfortranbegin', 'gfortran'),
             'openmp': ('gomp',),
         },
-        
+
     }
 
-    compiler_name_vendor_mapping = {'g++': 'gnu', 'icpc': 'intel', 'CC': 'cray'}
+    compiler_name_vendor_mapping = {'g++': 'gnu', 'icpc': 'intel', 'CC': 'cray-gnu'}
 
     def __init__(self, *args, **kwargs):
         # g++ takes a superset of gcc arguments
@@ -371,7 +389,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     compiler_dict = {
         'gnu': 'gfortran',
         'intel': 'ifort',
-        'cray': 'ftn',
+        'cray-gnu': 'ftn',
     }
 
     flag_dict = {
@@ -392,7 +410,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     compiler_name_vendor_mapping = {
         'gfortran': 'gnu',
         'ifort': 'intel',
-        'ftn': 'cray',
+        'ftn': 'cray-gnu',
     }
 
 
@@ -500,9 +518,9 @@ def compile_py_so(obj_files, CompilerRunner_=None,
     from distutils.sysconfig import get_config_vars
     inc_dirs = kwargs.pop('inc_dirs', [])
     lib_dirs = kwargs.pop('lib_dirs', [])
-    lds = filter(lambda x: len(x)>0, os.environ.get(
-        'LD_LIBRARY_PATH', '').split(':'))
-    lib_dirs.extend(lds)
+    # lds = filter(lambda x: len(x)>0, os.environ.get(
+    #     'LD_LIBRARY_PATH', '').split(':'))
+    # lib_dirs.extend(lds)
     libs += [x[2:] for x in get_config_vars(
         'BLDLIBRARY')[0].split() if x.startswith('-l')]
     cc = get_config_vars('BLDSHARED')[0]
