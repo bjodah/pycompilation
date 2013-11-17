@@ -44,7 +44,6 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
         else:
             return (FortranCompilerRunner,
                     {}, vendor)
-
     elif vendor == 'gnu':
         if cplus:
             return (CppCompilerRunner,
@@ -52,8 +51,6 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
         else:
             return (FortranCompilerRunner,
                     {}, vendor)
-            #(CCompilerRunner, {'lib_options': ['fortran']}, vendor)
-
 
 
 class CompilerRunner(object):
@@ -175,7 +172,6 @@ class CompilerRunner(object):
         for lib_opt in self.lib_options:
             self.libs.extend(
                 self.lib_dict[self.compiler_name][lib_opt])
-
 
 
     @classmethod
@@ -467,19 +463,7 @@ def compile_sources(files, CompilerRunner_=None,
                     ext))
         else:
             CompilerRunner__ = CompilerRunner_
-        fname = name+'.o' # .ext -> .o
-        dst = os.path.join(destdir, fname)
-        dstpaths.append(dst)
-        if missing_or_other_newer(dst, f, cwd=cwd):
-            runner = CompilerRunner__(
-                [f], dst, cwd=cwd, **kwargs)
-            runner.run()
-        else:
-            msg = "Found {0}, did not recompile.".format(dst)
-            if 'logger' in kwargs:
-                kwargs['logger'].info(msg)
-            else:
-                print(msg)
+        dstpaths.append(_src2obj(f, CompilerRunner__, cwd=cwd, **kwargs))
     return dstpaths
 
 
@@ -621,15 +605,28 @@ def simple_py_c_compile_obj(src,
         return c2obj(src, inc_dirs=inc_dirs, **kwargs)
 
 
-def _src2obj(srcpath, CompilerRunner_, objpath=None, **kwargs):
+def _src2obj(srcpath, CompilerRunner_, objpath=None, update_only=False, cwd=None, **kwargs):
+    """
+    Pass `options` to give them all.
+    Pass `extra_options` to extend default options
+    """
     objpath = objpath or os.path.splitext(
         os.path.basename(srcpath))[0] + '.o'
     run_linker = kwargs.pop('run_linker', False)
     kwargs['options'] = kwargs.pop('options', ['pic', 'warn'])
     expand_collection_in_dict(kwargs, 'options',
                               kwargs.pop('extra_options', []))
+
+    if update_only:
+        if not missing_or_other_newer(dst, f, cwd=cwd):
+            msg = "Found {0}, did not recompile.".format(dst)
+            if 'logger' in kwargs:
+                kwargs['logger'].info(msg)
+            else:
+                print(msg)
+            return None
     runner = CompilerRunner_([srcpath], objpath,
-                             run_linker=run_linker, **kwargs)
+                     run_linker=run_linker, cwd=cwd, **kwargs)
     runner.run()
     return objpath
 

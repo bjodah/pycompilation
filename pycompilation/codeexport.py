@@ -12,6 +12,10 @@ from __future__ import print_function, division, absolute_import
 # the codegeneration uses templates, one can easily extend
 # the functionality to other languages.
 
+# The approach taken here differs from sympy.utilities.codegen.codegen
+# through the use of Mako templates and classes which controlls
+# the how they are rendered. Which method is best depends on
+# the problem at hand (personal opinion).
 
 # stdlib imports
 import tempfile
@@ -31,7 +35,9 @@ import sympy
 # Intrapackage imports
 from .helpers import defaultnamedtuple
 from .util import import_, render_mako_template_to
-from .compilation import FortranCompilerRunner, CCompilerRunner, compile_py_so, _src2obj
+from .compilation import (
+    FortranCompilerRunner, CCompilerRunner,
+    CppCompilerRunner, compile_py_so, compile_sources)
 from .helpers import defaultnamedtuple
 
 
@@ -72,7 +78,7 @@ class Generic_Code(object):
     Attributes to optionally override:
     -`syntax`: any of the supported syntaxes ('C' or 'F')
     -`tempdir_basename`: basename of tempdirs created in e.g. /tmp/
-    -`_basedir` the path to the directory which relative paths are given to
+    -`_basedir` the path to the directory which relative (source) paths are given to
     """
 
     CompilerRunner = None # Set to a subclass of compilation.CompilerRunner
@@ -241,14 +247,10 @@ class Generic_Code(object):
 
     def _compile_obj(self, sources=None):
         sources = sources or self.source_files
-        for f in sources:
-            _src2obj(f, self.CompilerRunner,
-                     cwd=self._tempdir,
-                     inc_dirs=self.inc_dirs,
-                     extra_options=self.compilation_options,
-                     #preferred_vendor=self.preferred_vendor,
-                     metadir=self._tempdir,
-                     logger=self.logger)
+        compile_sources(sources, self.CompilerRunner, cwd=self._tempdir,
+                        inc_dirs=self.inc_dirs,
+                        extra_options=self.compilation_options,
+                        metadir=self._tempdir, logger=self.logger)
 
 
     def _compile_so(self, **kwargs):
@@ -257,7 +259,6 @@ class Generic_Code(object):
                       cwd=self._tempdir, libs=self.libs,
                       lib_dirs=self.lib_dirs,
                       defmacros=self.defmacros,
-                      #preferred_vendor=self.preferred_vendor,
                       metadir=self._tempdir,
                       logger=self.logger, **kwargs
         )
@@ -309,6 +310,8 @@ class C_Code(Generic_Code):
     syntax = 'C'
     CompilerRunner = CCompilerRunner
 
+class Cpp_Code(C_Code):
+    CompilerRunner = CppCompilerRunner
 
 class F90_Code(Generic_Code):
     """
