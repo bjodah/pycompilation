@@ -128,7 +128,6 @@ class CompilerRunner(object):
                         self.compiler_name])
         else:
             # Find a compiler
-            print('self.metadir',self.metadir)
             self.compiler_name, self.compiler_binary, \
                 self.compiler_vendor = self.find_compiler(
                     preferred_vendor, metadir=self.metadir)
@@ -614,8 +613,9 @@ def _src2obj(srcpath, CompilerRunner_, objpath=None, update_only=False, cwd=None
         os.path.basename(srcpath))[0] + '.o'
     run_linker = kwargs.pop('run_linker', False)
     kwargs['options'] = kwargs.pop('options', ['pic', 'warn'])
+    extra_options = kwargs.pop('extra_options', None) or []
     expand_collection_in_dict(kwargs, 'options',
-                              kwargs.pop('extra_options', []))
+                              extra_options)
 
     if update_only:
         if not missing_or_other_newer(dst, f, cwd=cwd):

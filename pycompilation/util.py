@@ -1,5 +1,6 @@
 import os
 import pickle
+import shutil
 from hashlib import md5
 
 from mako.template import Template
@@ -14,6 +15,23 @@ def get_abspath(path, cwd=None):
         return os.path.abspath(
             os.path.join(cwd, path)
         )
+
+def copy(src, dst, only_update=False):
+    """
+    shutil.copy with an `only_update` option
+    """
+    if only_update:
+        if os.path.isdir(dst):
+            if not missing_or_other_newer(
+                    os.path.join(
+                        dst,
+                        os.path.basename(src)), src):
+                return
+        else:
+            if not missing_or_other_newer(
+                    dst, src):
+                return
+    shutil.copy(src, dst)
 
 
 def run_sub_setup(cwd, cb, logger):
