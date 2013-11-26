@@ -161,13 +161,17 @@ def import_(filename):
     return mod
 
 
-def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True):
+def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True, logger=None):
         # Download sources ----------------------------------------
     for f in files:
         fpath = os.path.join(cwd, f) if cwd else f
         if not os.path.exists(fpath):
             import urllib2
-            print('Downloading: {0}'.format(websrc+f))
+            msg = 'Downloading: {0}'.format(websrc+f)
+            if logger:
+                logger.info(msg)
+            else:
+                print(msg)
             open(fpath, 'wt').write(urllib2.urlopen(websrc+f).read())
         fmd5 = md5_of_file(fpath).hexdigest()
         if fmd5 != md5sums[f]:

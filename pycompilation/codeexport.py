@@ -221,7 +221,7 @@ class Generic_Code(object):
 
     @property
     def binary_path(self):
-        return os.path.join(self._tempdir, self.extension_name)
+        return os.path.join(self._tempdir, self.so_file)
 
 
     def clean(self):
@@ -344,10 +344,6 @@ class F90_Code(Generic_Code):
                         names.append(
                             stripped_lower.split('module')[1].strip())
         return names
-
-    @property
-    def binary_path(self):
-        return os.path.join(self._tempdir, self.so_file)
 
     def _compile_so(self, **kwargs):
         kwargs.update({'fort': True})
