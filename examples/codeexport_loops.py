@@ -3,8 +3,7 @@
 
 import sympy
 
-from pycompilation import Cython_Code
-
+from pycompilation.codeexport import C_Code
 
 def get_statements(eq, taken=None):
     """
@@ -15,15 +14,20 @@ def get_statements(eq, taken=None):
     """
     stmnts = []
     # maybe make taken to be a set
-    taken = taken or []
-    taken += [x for x in eq.atoms() if x.is_Symbol and x not in taken]
+    taken = set()
+    for x in eq.atoms:
+        if x.is_Symbol: taken.add(x)
+
+    #taken = taken or []
+    #taken += [x for x in eq.atoms() if x.is_Symbol and x not in taken]
+
     i = 0
     def new_symb():
         base = '_symb_tmp__'
         i += 1
         candidate = sympy.Symbol(base+str(i))
         if not candidate in taken:
-            taken.append(candidate)
+            taken.add(candidate)
             return candidate
         else:
             i += 1
@@ -38,7 +42,13 @@ def get_statements(eq, taken=None):
                 expr, loopv = a.args[0], a.args[1]
                 sub_stmnts(get_statements(expr), taken)
                 stmnts.append(Loop(sub_stmnts, loopv))
+            elif isinstance(a, sympy.Product):
+                raise NotImplementedError
+            else:
+                raise NotImplementedError
+
     stmnts.extend(type(stmnts)([argify(arg) for arg in stmts.args]))
+    return stmnts
 
 
 def get_idxs(exprs):
@@ -97,8 +107,6 @@ class ExampleCode(C_Code):
         return {'expr_groups': expr_groups}
 
 
-class ExampleCodeWrapper(Cython_Code):
-    pass
 
 
 def make_callback():

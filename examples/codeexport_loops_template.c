@@ -1,8 +1,9 @@
 // This is a Mako (http://docs.makotemplates.org/) template of a C-source code (C99) file
 
-<%!
-from pycompilation.codeexport import Loop 
-%>
+%if false:
+ // Essentially "import pycompilation.codeexport as ce"
+%end if
+<%namespace name="ce" module="pycompilation.codeexport"/>
 
 
 <%def name="render_group(group)">
@@ -14,7 +15,7 @@ from pycompilation.codeexport import Loop
 
 <%def name="nested_loop(counter, bounds_idx, body, type='int')">
   for (${type} ${counter}=bounds[bounds_idx*2]; ${counter} < bounds[bounds_idx*2+1]; ++${counter}){ 
-    ${loop(*body) if isinstance(body, Loop) else render_group(body)}
+    ${loop(*body) if isinstance(body, ce.Loop) else render_group(body)}
   } 
 </%def>
 
@@ -24,6 +25,6 @@ void func(const int * const restrict bounds,
 	  double * restrict output)
 {
   %for group in expr_groups:
-  ${nested_loop(*group) if isinstance(group, Loop) else render_group(group)}
+  ${nested_loop(*group) if isinstance(group, ce.Loop) else render_group(group)}
   %endfor
 }
