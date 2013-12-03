@@ -49,7 +49,9 @@ def expand_collection_in_dict(d, key, new_items):
 
 def find_binary_of_command(candidates):
     """
-    Currently only support *nix systems (invocation of which)
+    Calls `find_executable` from distuils for
+    provided candidates and returns first hit.
+    If no candidate mathces, a RuntimeError is raised
     """
     for c in candidates:
         binary_path = find_executable(c)
@@ -59,37 +61,66 @@ def find_binary_of_command(candidates):
         candidates))
 
 
-def defaultnamedtuple(name, args, defaults=None):
+def defaultnamedtuple(name, args, defaults=(), typing=()):
     """
     defaultnamedtuple returns a new subclass of Tuple with named fields
     and a constructor with implicit default values.
+
+    Arguments:
+    -`name`: the name of the class
+    -`args`: a tuple or a splitable string
+    -`defaults`: default values for args, counting [-len(defaults):]
+    -`typing`: optional requirements for type, counting [:len(typing)]
+               should be an iterable of callbacks returning True for
+               conformance.
+
+    Example
 
     >>> Body = namedtuple('Body', 'x y z density', (1.0,))
     >>> Body.__doc__
     SOMETHING
     >>> b = Body(10, z=3, y=5)
     >>> b._asdict()
-    {'densidty': 1.0, 'x': 10, 'y': 5, 'z': 3}
+    {'density': 1.0, 'x': 10, 'y': 5, 'z': 3}
     """
-    if defaults == None: defaults = ()
     nt = namedtuple(name, args)
     kw_order = args.split() if isinstance(args, basestring) else args
     nargs = len(kw_order)
 
+    # Sanity check that `defaults` conform to typing
+    if len(typing) + len(defaults) > nargs:
+        # there is an overlap
+        noverlap = len(typing) + len(defaults) - nargs
+        for i, t in enumerate(typing[-noverlap:]):
+            assert t(defaults[i])
+
+    # We will be returning a factory which intercepts before
+    # calling our namedtuple constructor
     def factory(*args, **kwargs):
+        # Set defaults for missing args
         n_missing = nargs-len(args)
         if n_missing > 0:
             unset = OrderedDict(zip(kw_order[-n_missing:],
                                     defaults[-n_missing:]))
             unset.update(kwargs)
-            return nt(*(args+tuple(unset.values())))
-        else:
-            return nt(*args)
+            args += tuple(unset.values())
+
+        # Type checking
+        for i, t in enumerate(typing):
+            if not t(args[i]):
+                raise ValueError('Argument {} ({}) does not conform to'+\
+                                 ' typing requirements'.format(i, args[i]))
+        # Construct namedtuple instance and return it
+        return nt(*args)
     factory.__doc__ = nt.__doc__
     return factory
 
 
 def assure_dir(path):
+    """
+    Asserts that path is direcory, if it does
+    not exist: it is created.
+    """
     if os.path.exists(path):
         assert os.path.isdir(path)
     else:
@@ -102,6 +133,7 @@ def line_cont_after_delim(ctx, s, line_len=40, delim=(',',),
     Insert newline (with preceeding `line_cont_token`) afer
     passing over a delimiter after traversing at least `line_len`
     number of characters
+
     Mako convenience function. E.g. fortran does not
     accpet lines of arbitrary length.
     """

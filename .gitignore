@@ -11,4 +11,5 @@ TAGS
 */#*#
 */*.so
 examples/.meta*
+examples/*_wrapper.c
 examples/*build*

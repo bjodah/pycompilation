@@ -43,6 +43,16 @@ from .helpers import defaultnamedtuple
 
 Loop = defaultnamedtuple('Loop', ('counter', 'bounds_idx', 'body'), ())
 
+# DummyGroup:s are used in transformation from sympy expression into code
+# It is used to protect symbols from being operated upon.
+DummyGroup = defaultnamedtuple('DummyGroup', 'basename symbols')
+
+# ArrayifyGroup:s defines what expressions should be arrayified
+# and what
+ArrayifyGroup = defaultnamedtuple(
+    'ArrayifyGroup', 'basename code_tok offset dim', [None, 0])
+
+
 def _dummify_expr(expr, basename, symbs):
     """
     Useful to robustify prior to e.g. regexp substitution of code strings
@@ -53,19 +63,38 @@ def _dummify_expr(expr, basename, symbs):
     return expr
 
 
-def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0):
+def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0,
+                      match_regex='(\d)'):
     """
-    Syntax is either 'C' or 'F'
-    Example:
-    >>> syntaxify_getitem('C', 'y_i = x_i+i;', 'yout', 'y')
-    'yout[i] = x_i+i;'
+
+    Arguments:
+    -`syntax`: Either 'C' or 'F' for C or Fortran respectively
+    -`scode`: string of code to transformed
+    -`basename`: name of (array) variable in scode
+    -`token`: name of (array) variable in code
+
+    Examples:
+    >>> syntaxify_getitem('C', 'y_i = x_i+i;', 'y', 'yout', offset='CONST', match_regex=r'_(\w)')
+    'yout[i+CONST] = x_i+i;'
+
+    >>> syntaxify_getitem('F', 'y7 = x7+i;', 'y', 'yout', offset=-3, dim=-1)
+    'yout(7-3,:) = x_7+i;'
     """
     if syntax == 'C': assert dim == 0 # C does not support broadcasting
-    offset_str = '{0:+d}'.format(offset) if offset != None else ''
-    tgt = {'C':token+r'[\1'+offset_str+']',
-           'F':token+'('+':,'*dim+r'\1'+offset_str+')',
-    }.get(syntax)
-    return re.sub(basename+'(\d+)', tgt, scode)
+    if isinstance(offset, int):
+        offset_str = '{0:+d}'.format(offset)
+    elif offset == None:
+        offset_str = ''
+    else:
+        offset_str = '+'+str(offset)
+
+    c_tgt = token+r'[\1'+offset_str+']'
+    if dim > 0:
+        f_tgt = token+'('+':,'*dim+r'\1'+offset_str+')' # slow!
+    else:
+        f_tgt = token+'('+r'\1'+offset_str+',:'*-dim+')' # fast!
+    tgt = {'C':c_tgt, 'F':f_tgt}.get(syntax)
+    return re.sub(basename+match_regex, tgt, scode)
 
 
 class Generic_Code(object):
@@ -95,7 +124,7 @@ class Generic_Code(object):
     extension_name = 'generic_extension'
     so_file = None
     extension_name = None
-    compilation_options = None
+    compilation_options = ['pic', 'warn']
 
     list_attributes = (
         '_written_files', # Track files which are written
@@ -165,29 +194,40 @@ class Generic_Code(object):
         return {}
 
 
-    def as_arrayified_code(self, expr, dummy_groups=()):
+    def as_arrayified_code(self, expr, dummy_groups=(), arrayify_groups=()):
         """
-        >>> self.as_arrayified_code(f(x)**2+y, ('funcdummies', [f(x)], 'y', 1, 0))
+        >>> self.as_arrayified_code(f(x)**2+y,
+                (DummyGroup('funcdummies', [f(x)]),))
         """
-        for basename, symbols, code_tok, offset, dim in dummy_groups:
+        for basename, symbols in dummy_groups:
             expr = _dummify_expr(expr, basename, symbols)
 
-        scode = self.wcode(expr)
+        scode = self.wcode(expr) # sympy.ccode or sympy.fcode(..., source_format='free')
 
-        for basename, symbols, code_tok, offset, dim in dummy_groups:
+        for basename, code_tok, offset, dim in arrayify_groups:
             scode = syntaxify_getitem(
                 self.syntax, scode, basename, code_tok, offset, dim)
 
         return scode
 
 
-    def get_cse_code(self, exprs, basename, dummy_groups=()):
+    def get_cse_code(self, exprs, basename=None, dummy_groups=(), arrayify_groups=()):
+        """
+        Get arrayified code for common subexpression.
+        Arguments:
+        -`exprs`: list of sympy expressions
+        -`basename`: stem of variable names (default: cse)
+        -`dummy_groups`: tuple of
+        """
+        if basename == None: basename = 'cse'
         cse_defs, cse_exprs = sympy.cse(
             exprs, symbols=sympy.numbered_symbols(basename))
+
+        # Let's convert the new expressions into (arrayified) code
         cse_defs_code = [(vname, self.as_arrayified_code(
-            vexpr, dummy_groups)) for vname, vexpr in cse_defs]
+            vexpr, dummy_groups, arrayify_groups)) for vname, vexpr in cse_defs]
         cse_exprs_code = [self.as_arrayified_code(
-            x, dummy_groups) for x in cse_exprs]
+            x, dummy_groups, arrayify_groups) for x in cse_exprs]
         return cse_defs_code, cse_exprs_code
 
 
@@ -245,12 +285,14 @@ class Generic_Code(object):
         self._compile_so()
 
 
-    def _compile_obj(self, sources=None):
+    def _compile_obj(self, sources=None, **kwargs):
         sources = sources or self.source_files
         compile_sources(sources, self.CompilerRunner, cwd=self._tempdir,
                         inc_dirs=self.inc_dirs,
-                        extra_options=self.compilation_options,
-                        metadir=self._tempdir, logger=self.logger)
+                        defmacros=self.defmacros,
+                        options=self.compilation_options,
+                        metadir=self._tempdir, logger=self.logger,
+                        **kwargs)
 
 
     def _compile_so(self, **kwargs):
@@ -259,19 +301,19 @@ class Generic_Code(object):
                       cwd=self._tempdir, libs=self.libs,
                       lib_dirs=self.lib_dirs,
                       defmacros=self.defmacros,
+                      options=self.compilation_options,
                       metadir=self._tempdir,
-                      logger=self.logger, **kwargs
-        )
+                      logger=self.logger, **kwargs)
 
 
-DummyGroup = defaultnamedtuple(
-    'DummyGroup', 'basename symbols code_tok offset dim', [None, 0])
 
 
 class Cython_Code(Generic_Code):
     """
     Uses Cython's build_ext and distutils
     to simplify compilation
+
+    Could be rewritten to use pyx2obj
     """
 
     from Cython.Distutils import build_ext

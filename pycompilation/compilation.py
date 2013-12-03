@@ -668,7 +668,6 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
             logger=None, full_module_name=None, only_update=False,
             metadir=None, include_numpy=False, inc_dirs=None,
             cy_kwargs=None, gdb=False, cplus=False, **kwargs):
-
     """
     Convenience function
 
