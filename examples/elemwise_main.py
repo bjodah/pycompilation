@@ -19,7 +19,8 @@ def run_compilation(tempd, logger=None):
     pyx2obj('elemwise_wrapper.pyx', cwd=tempd, logger=logger)
 
     compile_sources(['elemwise.c'], cwd=tempd,
-                    options=['pic', 'warn', 'fast', 'c99', 'openmp'],
+                    options=['pic', 'warn', 'fast', 'openmp'],
+                    std='c99',
                     run_linker=False, logger=logger)
 
     so_file = compile_py_so(['elemwise.o', 'elemwise_wrapper.o'],

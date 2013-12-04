@@ -4,7 +4,9 @@
 import os
 import logging
 from shutil import copy
-from pycompilation import fort2obj, cpp2obj, pyx2obj, compile_py_so, CppCompilerRunner, import_
+from pycompilation import src2obj, pyx2obj, compile_py_so, CppCompilerRunner, import_, get_mixed_fort_c_linker
+
+from pycompilation.helpers import expand_collection_in_dict
 
 def run_compilation(logger, tempd):
     """
@@ -13,14 +15,17 @@ def run_compilation(logger, tempd):
     """
     copy('euclid.hpp', tempd)
     objs = []
-    objs.append(fort2obj(
-        '../euclid_enorm.f90', options=['pic', 'fast', 'warn', 'f2008', 'openmp'],
+    objs.append(src2obj(
+        '../euclid_enorm.f90',
+        options=['pic', 'fast', 'warn', 'openmp'],
         cwd=tempd, logger=logger))
-    objs.append(cpp2obj('../euclid.cpp', cwd=tempd, logger=logger))
+    objs.append(src2obj('../euclid.cpp', std='c++11', options=['warn','pic','fast'],
+                        cwd=tempd, logger=logger))
     objs.append(pyx2obj('../euclid_wrapper.pyx', cplus=True, cwd=tempd, logger=logger))
 
-    so_file = compile_py_so(objs, CppCompilerRunner, lib_options=['fortran', 'openmp'],
-                            cwd=tempd, logger=logger)
+    MixedRunner, kwargs, vendor = get_mixed_fort_c_linker(metadir=tempd, cplus=True)
+    expand_collection_in_dict(kwargs, 'lib_options', ['openmp'])
+    so_file = compile_py_so(objs, MixedRunner, cwd=tempd, logger=logger, **kwargs)
 
     return os.path.join(tempd, so_file)
 

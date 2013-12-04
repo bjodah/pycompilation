@@ -1,6 +1,6 @@
 module enorm
 
-use iso_c_binding, only: c_int, c_double
+use iso_c_binding, only: c_int, c_double ! Part of fortran 2003 standard
 
 private
 public enorm2
@@ -12,6 +12,7 @@ contains
     integer(c_int), value, intent(in) :: n
     integer(c_int), intent(in) :: v(n)
     real(c_double) :: r
+    integer :: i
 
     r = 0
     !$omp parallel do private(i) reduction(+: r)

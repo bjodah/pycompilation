@@ -110,7 +110,11 @@ class InvNewtonCode(C_Code):
                  'invnewton_wrapper.o']
     so_file = 'invnewton_wrapper.so'
 
-    compilation_options = C_Code.compilation_options + ['fast', 'openmp', 'c99']
+    compile_kwargs = {
+        'options': ['warn', 'pic', 'fast', 'openmp'],
+        'std': 'c99'
+    }
+
 
     def __init__(self, yexpr, lookup_N, order, xlim,
                  x, **kwargs):

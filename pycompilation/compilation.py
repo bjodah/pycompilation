@@ -10,6 +10,16 @@ from .helpers import (
     find_binary_of_command, uniquify, assure_dir, expand_collection_in_dict
     )
 
+if os.name == 'posix': # Future improvement to make cross-platform
+    flagprefix = '-'
+elif os.name == 'nt':
+    flagprefix = '/'
+else:
+    raise ImportError("Unknown os name: {}".format(os.name))
+
+
+default_compile_options = ['warn', 'pic']
+
 
 class CompilationError(Exception):
     pass
@@ -55,7 +65,14 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
 
 class CompilerRunner(object):
 
-    flag_dict = None # Lazy unified defaults for compilers
+    compiler_dict = None # Subclass to vendor/binary dict
+
+    standards = None # Subclass to a tuple of supported standards
+                     # (first one will be the default)
+
+    std_formater = None # Subclass to dict of binary/formater-callback
+
+    option_flag_dict = None # Lazy unified defaults for compilers
     metadata_filename = '.metadata_CompilerRunner'
 
     # subclass to be e.g. {'gcc': 'gnu', ...}
@@ -101,7 +118,7 @@ class CompilerRunner(object):
 
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
-                 lib_dirs=None, options=None, defmacros=None, logger=None,
+                 lib_dirs=None, std=None, options=None, defmacros=None, logger=None,
                  preferred_vendor=None, metadir=None, lib_options=None,
                  only_update=False):
         """
@@ -118,14 +135,13 @@ class CompilerRunner(object):
 
         self.out = out
         self.flags = flags or []
-        self.metadir = metadir
+        self.metadir = metadir or cwd
         if compiler:
             self.compiler_name, self.compiler_binary = compiler
-            if self.metadir:
-                self.save_to_metadata_file(
-                    self.metadir, 'vendor',
-                    self.compiler_name_vendor_mapping[
-                        self.compiler_name])
+            self.save_to_metadata_file(
+                self.metadir, 'vendor',
+                self.compiler_name_vendor_mapping[
+                    self.compiler_name])
         else:
             # Find a compiler
             self.compiler_name, self.compiler_binary, \
@@ -141,6 +157,7 @@ class CompilerRunner(object):
         self.libs = libs or []
         self.lib_dirs = lib_dirs or []
         self.options = options or []
+        self.std = std or self.standards[0]
         self.lib_options = lib_options or []
         self.logger = logger
         self.only_update = only_update
@@ -150,8 +167,12 @@ class CompilerRunner(object):
         else:
             self.flags.append('-c')
 
+        if self.std:
+            self.flags.append(self.std_formater[
+                self.compiler_name](self.std))
+
         for opt in self.options:
-            self.flags.extend(self.flag_dict.get(
+            self.flags.extend(self.option_flag_dict.get(
                 self.compiler_name, {}).get(opt,[]))
 
             # extend based on vendor options dict
@@ -205,7 +226,6 @@ class CompilerRunner(object):
                     preferred_vendor))
         name, path = find_binary_of_command([
             cls.compiler_dict[x] for x in candidates])
-
         if metadir and not used_metafile:
             cls.save_to_metadata_file(metadir, 'compiler',
                                       (name, path))
@@ -298,13 +318,21 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
         'cray-gnu': 'cc',
     }
 
-    flag_dict = {
+    standards = ('c89', 'c90', 'c99', 'c11') # First is default
+
+    std_formater = {
+        'gcc': '-std={}'.format,
+        'icc': '-std={}'.format,
+        'cc': '-std={}'.format,
+    }
+
+
+    option_flag_dict = {
         'gcc': {
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O3', '-march=native', '-ffast-math',
                      '-funroll-loops'),
-            'c99': ('-std=c99',),
             'openmp': ('-fopenmp',),
         },
         'icc': {
@@ -312,19 +340,31 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
             'fast': ('-fast',),
             'openmp': ('-openmp',),
             'warn': ('-Wall',),
-            'c99': ('-std=c99',),
         },
         'cc': { # assume PrgEnv-gnu (not portable, future improvement..)
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O3', '-march=native', '-ffast-math',
                      '-funroll-loops'),
-            'c99': ('-std=c99',),
             'openmp': ('-fopenmp',),
         },
     }
 
     compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel', 'cc': 'cray-gnu'}
+
+
+def _mk_flag_filter(cmplr_name): # helper for class initialization
+    not_welcome = {'g++': ("Wimplicit-interface",)}#"Wstrict-prototypes",)}
+    if cmplr_name in not_welcome:
+        def fltr(x):
+            for nw in not_welcome[cmplr_name]:
+                if nw in x: return False
+            return True
+    else:
+        def fltr(x):
+            return True
+    return fltr
+
 
 class CppCompilerRunner(CompilerRunner, HasMetaData):
 
@@ -334,15 +374,20 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         'cray-gnu': 'CC',
     }
 
-    flag_dict = {
+    standards = ('c++98', 'c++11') # First is the default
+
+    std_formater = {
+        'g++': '-std={}'.format,
+        'icpc': '-std={}'.format,
+        'cray-gnu': '-std={}'.format,
+    }
+
+    option_flag_dict = {
         'g++': {
-            'c++11': ('-std=c++0x',),
         },
         'icpc': {
-            'c++11': ('-std=c++11',),
         },
         'CC': { # assume PrgEnv-gnu (not portable, future improvement..)
-            'c++11': ('-std=c++98',),
         }
     }
 
@@ -365,21 +410,30 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
 
     def __init__(self, *args, **kwargs):
         # g++ takes a superset of gcc arguments
-        new_flag_dict = {
-            'g++': CCompilerRunner.flag_dict['gcc'].copy(),
-            'icpc': CCompilerRunner.flag_dict['icc'].copy(),
-            'CC': CCompilerRunner.flag_dict['cc'].copy(),
+        new_option_flag_dict = {
+            'g++': CCompilerRunner.option_flag_dict['gcc'].copy(),
+            'icpc': CCompilerRunner.option_flag_dict['icc'].copy(),
+            'CC': CCompilerRunner.option_flag_dict['cc'].copy(),
         }
         for key in ['g++', 'icpc', 'CC']:
-            fltr = _mk_flag_filter(key)
-            keys, values = zip(*self.flag_dict[key].items())
-            new_flag_dict[key].update(dict(zip(
-                keys, filter(fltr, values))))
-        self.flag_dict = new_flag_dict
+            if self.option_flag_dict[key]:
+                fltr = _mk_flag_filter(key)
+                keys, values = zip(*self.option_flag_dict[key].items())
+                new_option_flag_dict[key].update(dict(zip(
+                    keys, filter(fltr, values))))
+        self.option_flag_dict = new_option_flag_dict
         super(CppCompilerRunner, self).__init__(*args, **kwargs)
 
 
 class FortranCompilerRunner(CompilerRunner, HasMetaData):
+
+    standards = (None, 'f95', 'f2003', 'f2008') #First is default (F77)
+
+    std_formater = {
+        'gfortran': '-std={}'.format,
+        'ifort': lambda x: '-stand f{}'.format(x[-2:]), # f2008 => f08
+        'ftn': '-std={}'.format,
+    }
 
     compiler_dict = {
         'gnu': 'gfortran',
@@ -387,13 +441,11 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         'cray-gnu': 'ftn',
     }
 
-    flag_dict = {
+    option_flag_dict = {
         'gfortran': {
-            'f2008': ('-std=f2008',),
             'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
         },
         'ifort': {
-            'f2008': ('-stand f08',),
             'warn': ('-warn', 'all',),
         },
         'ftn': { # assume PrgEnv-gnu (not portable, future improvement..)
@@ -402,23 +454,37 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         },
     }
 
+    lib_dict = {
+        'gfortran': {
+            'openmp': ('gomp',),
+        },
+        'ifort': {
+            'openmp': ('iomp5',),
+        },
+        'cray-gnu': {# assume PrgEnv-gnu (not portable, future improvement..)
+            'openmp': ('gomp',),
+        },
+
+    }
+
     compiler_name_vendor_mapping = {
         'gfortran': 'gnu',
         'ifort': 'intel',
-        'ftn': 'cray-gnu',
+        'ftn': 'cray-gnu', # obvious deficiency with current method
     }
 
 
     def __init__(self, *args, **kwargs):
         # gfortran takes a superset of gcc arguments
-        new_flag_dict = {
-            'gfortran': CCompilerRunner.flag_dict['gcc'].copy(),
-            'ifort': CCompilerRunner.flag_dict['icc'].copy(),
-            'ftn': CCompilerRunner.flag_dict['cc'].copy(),
+        new_option_flag_dict = {
+            'gfortran': CCompilerRunner.option_flag_dict['gcc'].copy(),
+            'ifort': CCompilerRunner.option_flag_dict['icc'].copy(),
+            'ftn': CCompilerRunner.option_flag_dict['cc'].copy(),
         }
         for key in ['gfortran', 'ifort', 'ftn']:
-            new_flag_dict[key].update(self.flag_dict[key])
-        self.flag_dict = new_flag_dict
+            new_option_flag_dict[key].update(self.option_flag_dict[key])
+        self.option_flag_dict = new_option_flag_dict
+
         super(FortranCompilerRunner, self).__init__(*args, **kwargs)
 
 
@@ -449,20 +515,7 @@ def compile_sources(files, CompilerRunner_=None,
     dstpaths = []
     for f in files:
         name, ext = os.path.splitext(os.path.basename(f))
-        if CompilerRunner_ == None:
-            if ext == '.c':
-                CompilerRunner__ = CCompilerRunner
-            elif ext in ('.cpp', '.cxx', '.cc'):
-                CompilerRunner__ = CppCompilerRunner
-            elif ext.lower() in ('.for', '.f', '.f90'):
-                CompilerRunner__ = FortranCompilerRunner
-            else:
-                raise KeyError('Could not deduce compiler from" + \
-                " extension: {0}'.format(
-                    ext))
-        else:
-            CompilerRunner__ = CompilerRunner_
-        dstpaths.append(_src2obj(f, CompilerRunner__, cwd=cwd, **kwargs))
+        dstpaths.append(src2obj(f, CompilerRunner_, cwd=cwd, **kwargs))
     return dstpaths
 
 
@@ -575,17 +628,6 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     os.chdir(ori_dir)
 
 
-def _mk_flag_filter(cmplr_name):
-    not_welcome = {'g++': ("Wimplicit-interface",)}#"Wstrict-prototypes",)}
-    if cmplr_name in not_welcome:
-        def fltr(x):
-            for nw in not_welcome[cmplr_name]:
-                if nw in x: return False
-            return True
-    else:
-        def fltr(x):
-            return True
-    return fltr
 
 
 def simple_py_c_compile_obj(src,
@@ -599,23 +641,36 @@ def simple_py_c_compile_obj(src,
     inc_dirs.extend(kwargs.pop('inc_dirs',[]))
 
     if cplus:
-        return cpp2obj(src, inc_dirs=inc_dirs, **kwargs)
+        return src2obj(src, CppCompilerRunner, inc_dirs=inc_dirs, **kwargs)
     else:
-        return c2obj(src, inc_dirs=inc_dirs, **kwargs)
+        return src2obj(src, CCompilerRunner, inc_dirs=inc_dirs, **kwargs)
 
 
-def _src2obj(srcpath, CompilerRunner_, objpath=None, update_only=False, cwd=None, **kwargs):
-    """
-    Pass `options` to give them all.
-    Pass `extra_options` to extend default options
-    """
-    objpath = objpath or os.path.splitext(
-        os.path.basename(srcpath))[0] + '.o'
+extension_mapping = {
+    '.c': (CCompilerRunner, None),
+    '.cpp': (CppCompilerRunner, None),
+    '.cxx': (CppCompilerRunner, None),
+    '.f'  : (FortranCompilerRunner, None),
+    '.for': (FortranCompilerRunner, None),
+    '.ftn': (FortranCompilerRunner, None),
+    '.f90': (FortranCompilerRunner, 'f08'), # ifort only knows about .f90
+    '.f95': (FortranCompilerRunner, 'f95'),
+    '.f03': (FortranCompilerRunner, 'f2003'),
+    '.f08': (FortranCompilerRunner, 'f2008'),
+}
+
+
+def src2obj(srcpath, CompilerRunner_=None, objpath=None, update_only=False,
+            cwd=None, **kwargs):
+    name, ext = os.path.splitext(os.path.basename(srcpath))
+    if CompilerRunner_ == None:
+        if ext == 'pyx': return pyx2obj(srcpath, objpath=objpath,
+                                        cwd=cwd, **kwargs) # special case
+        CompilerRunner_, std = extension_mapping[ext.lower()]
+        if not 'std' in kwargs: kwargs['std'] = std
+
+    objpath = objpath or name + '.o'
     run_linker = kwargs.pop('run_linker', False)
-    kwargs['options'] = kwargs.pop('options', ['pic', 'warn'])
-    extra_options = kwargs.pop('extra_options', None) or []
-    expand_collection_in_dict(kwargs, 'options',
-                              extra_options)
 
     if update_only:
         if not missing_or_other_newer(dst, f, cwd=cwd):
@@ -629,39 +684,6 @@ def _src2obj(srcpath, CompilerRunner_, objpath=None, update_only=False, cwd=None
                      run_linker=run_linker, cwd=cwd, **kwargs)
     runner.run()
     return objpath
-
-
-def fort2obj(srcpath, CompilerRunner_=FortranCompilerRunner,
-          objpath=None, std=None, extra_options=None, **kwargs):
-    """
-    Convenience function
-    """
-    extra_options = extra_options or []
-    extra_options.append(std or 'f2008')
-    return _src2obj(srcpath, CompilerRunner_, objpath,
-                    extra_options=extra_options, **kwargs)
-
-
-def c2obj(srcpath, CompilerRunner_=CCompilerRunner,
-          objpath=None, std=None, extra_options=None, **kwargs):
-    """
-    Convenience function
-    """
-    extra_options = extra_options or []
-    extra_options.append(std or 'c99')
-    return _src2obj(srcpath, CompilerRunner_, objpath,
-                    extra_options=extra_options, **kwargs)
-
-
-def cpp2obj(srcpath, CompilerRunner_=CppCompilerRunner,
-          objpath=None, std=None, extra_options=None, **kwargs):
-    """
-    Convenience function
-    """
-    extra_options = extra_options or []
-    extra_options.append(std or 'c++11')
-    return _src2obj(srcpath, CompilerRunner_, objpath,
-                    extra_options=extra_options, **kwargs)
 
 
 def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
@@ -715,7 +737,15 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
 
     flags = kwargs.pop('flags', [])
     flags.extend(['-fno-strict-aliasing'])
+    options = kwargs.pop('options', [])
+    if not 'pic' in options: options.append('pic')
+    if not 'warn' in options: options.append('warn')
+    if cplus:
+        std = kwargs.pop('std', 'c++11')
+    else:
+        std = kwargs.pop('std', 'c99')
     return simple_py_c_compile_obj(
         interm_c_file, objpath=objpath, cwd=cwd, logger=logger,
         only_update=only_update, metadir=metadir,
-        inc_dirs=inc_dirs, cplus=cplus, flags=flags, **kwargs)
+        inc_dirs=inc_dirs, cplus=cplus, flags=flags,
+        std=std, options=options, **kwargs)

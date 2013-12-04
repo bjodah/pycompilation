@@ -124,7 +124,7 @@ class Generic_Code(object):
     extension_name = 'generic_extension'
     so_file = None
     extension_name = None
-    compilation_options = ['pic', 'warn']
+    comile_kwargs = None # kwargs passed to CompilerRunner
 
     list_attributes = (
         '_written_files', # Track files which are written
@@ -285,25 +285,24 @@ class Generic_Code(object):
         self._compile_so()
 
 
-    def _compile_obj(self, sources=None, **kwargs):
+    def _compile_obj(self, sources=None):
         sources = sources or self.source_files
         compile_sources(sources, self.CompilerRunner, cwd=self._tempdir,
                         inc_dirs=self.inc_dirs,
                         defmacros=self.defmacros,
-                        options=self.compilation_options,
                         metadir=self._tempdir, logger=self.logger,
-                        **kwargs)
+                        **self.compile_kwargs)
 
 
-    def _compile_so(self, **kwargs):
+    def _compile_so(self):
         compile_py_so(self.obj_files,
                       so_file=self.so_file,
                       cwd=self._tempdir, libs=self.libs,
                       lib_dirs=self.lib_dirs,
                       defmacros=self.defmacros,
-                      options=self.compilation_options,
                       metadir=self._tempdir,
-                      logger=self.logger, **kwargs)
+                      logger=self.logger,
+                      **self.compile_kwargs)
 
 
 

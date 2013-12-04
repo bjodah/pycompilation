@@ -11,6 +11,8 @@ from pycompilation import (
     FortranCompilerRunner, import_
 )
 
+from pycompilation.helpers import term_fmt
+
 def run_compilation(tempd, logger=None):
     compile_sources(['../mtxmul.f90'], FortranCompilerRunner,
                     cwd=tempd, options=['pic', 'warn', 'fast','f90'],
@@ -33,7 +35,7 @@ def main(logger):
     C = mod.mtxmul(A,B)
     assert C.shape == (7, 13)
     assert np.allclose(np.dot(A,B), C)
-
+    print(term_fmt("Passed!",('green', 'black')))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
