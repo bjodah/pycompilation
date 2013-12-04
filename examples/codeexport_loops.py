@@ -80,87 +80,84 @@ def mk_recursive_loop(idxs, body):
 
 class ExampleCode(C_Code):
 
-    _templates = ['codeexport_loops_template.c']
+    templates = ['codeexport_loops_template.c']
+    copy_files = ['codeexport_loops_wrapper.o']
 
-    def __init__(self, exprs, *args, **kwargs):
-        self._exprs = exprs
-        self._idxs = get_idxs(exprs)
-        self._exprs_idxs = [
-            tuple(sorted([
-                i for i in self._idxs if i in expr.lhs.atoms()
-            ])) for expr in self._exprs]
+
+    def __init__(self, exprs, inputs, indices, **kwargs):
+        self.exprs = exprs
+        self.inputs = inputs
+        self.indices = indices
+        assert get_idxs(exprs) == sorted(indices) # sanity check
+
+        # list of lists ox indices present in each expr
+        self._exprs_idxs = [tuple(
+            [i for i in self.indices if i in expr.lhs.atoms()]) \
+            for expr in self.exprs]
+
+        # Group expressions using same set of indices
         self._expr_by_idx = DefaultDict(list)
         for idxs, expr in zip(self._exprs_idxs, self._exprs):
             self._expr_by_idx[idxs].append(expr)
-        super(ExampleCode, self).__init__(*args, **kwargs)
+        super(ExampleCode, self).__init__(**kwargs)
+
 
     @property
     def variables(self):
         expr_groups = []
-        for idxs in sorted(self._expr_by_idx.keys, key=len):
-            dummy_groups = (
-                DummyGroup('argdummies', self._)
-            )
-            cse_defs_code, exprs_in_cse_code = self.get_cse_code(
-                self._expr_by_idx[idxs], 'cse', dummy_groups)
+        for idxs in self._exprs_idxs:
+            # dummy_groups = (
+            #     DummyGroup('argdummies', self._)
+            # )
+            code = self.as_arrayified_code(self._expr_by_idx[idxs])
             expr_groups.append(mk_recursive_loop(idxs, expr_code))
         return {'expr_groups': expr_groups}
 
 
-
-
-def make_callback():
+def model1(a_arr, c_, ilim, jlim):
     """
-    For performance: Choose least strided index to have highest alphabetic order
+    x[i] = (a[i]/3-1)**i + c
     """
     i_bs = sympy.symbols('i_lb i_ub', integer=True)
-    j_bs = sympy.symbols('j_lb j_ub', integer=True)
     i = sympy.Idx('i', i_bs)
+
+    j_bs = sympy.symbols('j_lb j_ub', integer=True)
     j = sympy.Idx('j', j_bs)
 
+
+    # a_size >= i_ub - i_lb
     a_size = sympy.Symbol('a_size', integer=True)
     a = sympy.IndexedBase('a', shape=(a_size,))
 
+    c = sympy.Symbol('c', real=True)
+
+    x = sympy.IndexedBase('x', shape=(a_size,))
+
+
     exprs = [
-        Eq(x[i],(a[i]/3-1)**i+c),
-        Eq(y[j],(sympy.Sum(a[i], i, j-2, j+2)/3-1)/c),
-        Eq(z, c**2+a[d])
+        Eq(x[i], (a[i]/3-1)**i+c),
+        Eq(y[j], a[j]-j),
     ]
 
-    example_code = ExampleCode(exprs)
+    ex_code = ExampleCode(exprs, (a[i],c), (i, j))
+    mod = ex_code.compile_and_import_binary()
 
-    return example_code.compile_and_import_binary().my_callback
 
+    x_, y_ = mod.my_callback(a_arr, c_, bounds=(i_bounds, j_bounds))
+    assert np.allclose(x_, (a_arr/3-1)**np.arange(ilim[0], ilim[1]+1) - c_)
+    assert np.allclose(y_, a_arr-np.arange(jlim[0],jlim[1]+1))
+
+
+def model2():
+    """
+    y[j] = Sum(a[i], i, j-2, j+2)
+    """
+    pass
 
 def main():
-    """
-    The purpose of of this demo is to show capabilities of
-    codeexport when it comes to loop construction:
-
-    x[i] = (a[i]/3-1)**i+c
-    y[j] = (Sum(a[i], i, j-2, j+2)/3-1)/c
-    z    = c**2+a[d]
-
-    let i = i_lb:i_ub  # lower and upper bounds
-    let j = j_lb:j_ub
-
-    where input variables are:
-      int a_size, double a[a_size], double c, int d,
-      int i_lbound, int i_ubound, int j_lbound, int j_ubound
-
-    and output variables are:
-      x[i], y[j], z
-    """
-    cb = make_callback()
-
-    data = {'a': np.linspace(3.0, 11.0, 7)
-            'c': 3.14,
-            'd': 2,
-            'bounds': {'i': (0,7),
-                       'j': (2,5)}
-            }
-    result = cb(**data)
-    print(result)
+    a_arr = np.linspace(0,10,11)
+    c_ = 3.5
+    model1(a_arr, c_, (3,7), (2,6))
 
 
 if __name__ == '__main__':

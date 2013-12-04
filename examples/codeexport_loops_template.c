@@ -1,8 +1,6 @@
 // This is a Mako (http://docs.makotemplates.org/) template of a C-source code (C99) file
 
-%if false:
- // Essentially "import pycompilation.codeexport as ce"
-%end if
+##// Essentially "import pycompilation.codeexport as ce"
 <%namespace name="ce" module="pycompilation.codeexport"/>
 
 
