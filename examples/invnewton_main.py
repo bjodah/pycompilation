@@ -16,7 +16,14 @@ from sympy.parsing.sympy_parser import parse_expr, standard_transformations, imp
 from pycompilation import pyx2obj
 from pycompilation.codeexport import C_Code, ArrayifyGroup, DummyGroup
 
-from cInterpol import interpolate_by_finite_diff, PiecewisePolynomial
+from cInterpol import derivatives_at_point_by_finite_diff, PiecewisePolynomial
+
+try:
+    from symvarsub.numtransform import lambdify
+except IOError:
+    from sympy.utilities.lambdify import lambdify
+
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__file__)
@@ -28,11 +35,6 @@ def make_solver(y, x, ylim, xlim):
     do, (we need to solve iteratively using newtons method to
     populate the lookup table used in the C routine).
     """
-    try:
-        from symvarsub.numtransform import lambdify
-    except IOError:
-        from sympy.utilities.lambdify import lambdify
-
     cb_y = lambdify(x, y)
     cb_dydx = lambdify(x, y.diff(x))
 
@@ -102,7 +104,7 @@ def ensure_monotonic(y, x, xlim=None, strict=False):
 
 class InvNewtonCode(C_Code):
     templates = ['invnewton_template.c']
-    copy_files = ['invnewton_wrapper.o'] # cythonized and compiled .pyx <-- already put inplace
+    copy_files = ['invnewton_wrapper.o', 'Makefile', 'invnewton_main.c', 'invnewton.h'] # cythonized and compiled .pyx <-- already put inplace
     source_files = ['invnewton.c']
     obj_files = ['invnewton.o', # rendenered and compiled template
                  'invnewton_wrapper.o']
@@ -133,13 +135,13 @@ class InvNewtonCode(C_Code):
         yspace = (self.ylim[1]-self.ylim[0])/(self.lookup_N-1)
         solve_x = make_solver(self.y, self.x, self.ylim, self.xlim)
         for i in range(self.lookup_N):
-            nsample = self.order*2-1
+            nsample = (self.order+1)*2-1 # 3, 7, 11, ...
             xsample = np.empty(nsample)
             if i == 0:
                 ysample = np.linspace(self.lookup_y[i],
                                       self.lookup_y[i]+yspace,
                                       nsample)
-            if i == self.lookup_N-1:
+            elif i == self.lookup_N-1:
                 ysample = np.linspace(self.lookup_y[i]-yspace,
                                       self.lookup_y[i],
                                       nsample)
@@ -147,11 +149,14 @@ class InvNewtonCode(C_Code):
                 ysample = np.linspace(self.lookup_y[i]-yspace/2,
                                       self.lookup_y[i]+yspace/2,
                                       nsample)
+
             for j, y in np.ndenumerate(ysample):
                 val, err = solve_x(ysample[j])
+                print("y={} => x={}".format(ysample[j], val))
                 assert err < (self.xlim[1]-self.xlim[0])/self.lookup_N/1e3
                 xsample[j] = val
-            data[i,:] = interpolate_by_finite_diff(
+            print(ysample, xsample) ## DEBUG
+            data[i,:] = derivatives_at_point_by_finite_diff(
                 ysample, xsample, self.lookup_y[i], (self.order-1)/2)
 
         pw = PiecewisePolynomial(self.lookup_y, data)
@@ -184,11 +189,24 @@ class InvNewtonCode(C_Code):
 # y=x/(1+x) has the inverse x = y/(1-y), it is monotonic for x>-1 and x<-1 (inc/inc)
 def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
          x='x', save_temp=True, sample_N=2):
-    tempd = './invnewton_build'
+    # Parse yexprstr
     yexpr = parse_expr(yexprstr, transformations=(
         standard_transformations + (implicit_multiplication_application,)))
     x = sympy.Symbol(x, real=True)
     yexpr = yexpr.subs({sympy.Symbol('x'): x})
+
+    y = sympy.Symbol('y', real=True)
+    explicit_inverse = sympy.solve(yexpr-y,x)
+    if explicit_inverse:
+        if len(explicit_inverse) == 1:
+            print('Explicit inverse: ' + str(explicit_inverse))
+            explicit_inverse = explicit_inverse[0]
+        else:
+            print('No explicit inverse')
+            explicit_inverse = None
+
+    # Generate code
+    tempd = './invnewton_build'
     shutil.copy('invnewton_wrapper.pyx', tempd)
     pyxobj = pyx2obj('invnewton_wrapper.pyx', logger=logger)
     code = InvNewtonCode(yexpr, lookup_N, order, xlim, x,
@@ -196,15 +214,19 @@ def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
     ylim = code.ylim
     mod = code.compile_and_import_binary()
     os.unlink(pyxobj) # clean up
-    mod.invnewton((ylim[0]+ylim[1])/2)
 
+    # Calculate inverse for some randomly sampled values of y on span
     yspan = ylim[1]-ylim[0]
     yarr = ylim[0]+np.random.random(sample_N)*yspan
-
     xarr = mod.invnewton(yarr)
-    plt.plot(yarr, xarr)
 
-    # we are plotting an inverse...
+    # Plot the results
+    plt.plot(yarr, xarr, 'o', label='numerical')
+    if explicit_inverse:
+        cb_expl = lambdify(y, explicit_inverse)
+        xarr_expl = cb_expl(yarr)
+        plt.plot(yarr, xarr_expl, 'x', label='explicit')
+
     plt.ylabel('x')
     plt.xlabel('y')
     plt.show()

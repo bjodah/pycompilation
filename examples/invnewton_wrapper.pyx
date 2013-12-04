@@ -19,7 +19,7 @@ def invnewton(y, double abstol=1e-12, int itermax=16):
     xarr = np.empty(ny, dtype=np.float64)
     if ny == 1:
         status = c_invnewton(yarr[0], &x, abstol, itermax, 0, NULL)
-        if status == 1:
+        if status == -1:
             raise RuntimeError(("Maximum number of iterations"+\
                                " reached ({})").format(itermax))
         return x
