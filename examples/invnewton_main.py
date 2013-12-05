@@ -40,7 +40,7 @@ def make_solver(y, x, ylim, xlim):
 
     y0 = ylim[0]
     DxDy = (xlim[1]-xlim[0])/(ylim[1]-ylim[0])
-    def inv_y(y, abstol=1e-12, itermax=10, conv=None):
+    def inv_y(y, abstol=1e-13, itermax=16, conv=None):
         """
         Returns x and error estimate thereof
         """
@@ -62,7 +62,7 @@ def make_solver(y, x, ylim, xlim):
 
 
 
-def ensure_monotonic(y, x, xlim=None, strict=False):
+def ensure_monotonic(y, x, xlim=None, strict=False, solve=True):
     """
     Checks whehter an expression (y) in one variable (x)
     is monotonic.
@@ -90,15 +90,16 @@ def ensure_monotonic(y, x, xlim=None, strict=False):
     else:
         incr = True
 
-    dydx = y.diff(x)
-    d2ydx2 = dydx.diff(x)
-    xs = sympy.solve(dydx, x)
-    for v in xs:
-        if xlim:
-            if v < xlim[0] or v > xlim[1]: continue
-        if strict: return False, None, None
-        if d2ydx2.subs({x: v}) != 0:
-            return False, None, None
+    if solve:
+        dydx = y.diff(x)
+        d2ydx2 = dydx.diff(x)
+        xs = sympy.solve(dydx, x)
+        for v in xs:
+            if xlim:
+                if v < xlim[0] or v > xlim[1]: continue
+            if strict: return False, None, None
+            if d2ydx2.subs({x: v}) != 0:
+                return False, None, None
     return True, ylim, incr
 
 
@@ -117,13 +118,20 @@ class InvNewtonCode(C_Code):
 
 
     def __init__(self, yexpr, lookup_N, order, xlim,
-                 x, **kwargs):
-        self.monotonic, self.ylim, self.incr = ensure_monotonic(yexpr, x, xlim)
+                 x, check_monotonicity, **kwargs):
+        """
+        If check_monotonicity == False: trust user (useful when symbolic treatment is unsuccessful)
+        """
+        self.monotonic, self.ylim, self.incr = ensure_monotonic(yexpr, x, xlim, solve=check_monotonicity)
         if not self.monotonic:
             raise ValueError("{} is not monotonic on xlim={}".format(yexpr, xlim))
         self.y = yexpr
         self.dydx = yexpr.diff(x)
         self.lookup_N = lookup_N
+        if order < 0:
+            raise ValueError("Negative order of polynomial?")
+        if (order % 2) != 1:
+            raise ValueError("Odd order polynomial req.")
         self.order = order
         self.xlim = xlim
         self.x = x
@@ -156,10 +164,8 @@ class InvNewtonCode(C_Code):
 
             for j, y in np.ndenumerate(ysample):
                 val, err = solve_x(ysample[j])
-                print("y={} => x={}".format(ysample[j], val))
                 assert err < (self.xlim[1]-self.xlim[0])/self.lookup_N/1e3
                 xsample[j] = val
-            print(ysample, xsample) ## DEBUG
             data[i,:] = derivatives_at_point_by_finite_diff(
                 ysample, xsample, self.lookup_y[i], (self.order-1)/2)
 
@@ -192,7 +198,8 @@ class InvNewtonCode(C_Code):
 
 # y=x/(1+x) has the inverse x = y/(1-y), it is monotonic for x>-1 and x<-1 (inc/inc)
 def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
-         x='x', save_temp=True, sample_N=2):
+         x='x', save_temp=True, sample_N=2, check_monotonicity=False,
+         itermax=30):
     # Parse yexprstr
     yexpr = parse_expr(yexprstr, transformations=(
         standard_transformations + (implicit_multiplication_application,)))
@@ -213,7 +220,7 @@ def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
     tempd = './invnewton_build'
     shutil.copy('invnewton_wrapper.pyx', tempd)
     pyxobj = pyx2obj('invnewton_wrapper.pyx', logger=logger)
-    code = InvNewtonCode(yexpr, lookup_N, order, xlim, x,
+    code = InvNewtonCode(yexpr, lookup_N, order, xlim, x, check_monotonicity,
                          save_temp=save_temp, logger=logger)
     ylim = code.ylim
     mod = code.compile_and_import_binary()
@@ -222,17 +229,25 @@ def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
     # Calculate inverse for some randomly sampled values of y on span
     yspan = ylim[1]-ylim[0]
     yarr = ylim[0]+np.random.random(sample_N)*yspan
-    xarr = mod.invnewton(yarr)
+    print('yarr.size={}'.format(yarr.size)) ## DEBUG
+    xarr = mod.invnewton(yarr, itermax=itermax)
 
     # Plot the results
-    plt.plot(yarr, xarr, 'o', label='numerical')
     if explicit_inverse:
+        plt.subplot(212)
         cb_expl = lambdify(y, explicit_inverse)
-        xarr_expl = cb_expl(yarr)
-        plt.plot(yarr, xarr_expl, 'x', label='explicit')
+        xarr_expl = cb_expl(yarr).flatten()
+        plt.plot(yarr, xarr_expl-xarr, 'x', label='Error')
+        plt.ylabel('x')
+        plt.xlabel('y')
+        plt.legend()
+        plt.subplot(211)
+        plt.plot(yarr, xarr_expl, 'x', label='Analytic')
 
+    plt.plot(yarr, xarr, 'o', label='Numerical')
     plt.ylabel('x')
     plt.xlabel('y')
+    plt.legend()
     plt.show()
 
 argh.dispatch_command(main)

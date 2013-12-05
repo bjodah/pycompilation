@@ -13,5 +13,11 @@ Mako comes highly recommended as template engine and a convenience method is pro
 # License
 Open Soucrce. Released under the very permissive simplified (2-clause) BSD license. See LICENCE.tx for further details.
 
+# Examples
+
+InvNewton still has some minor bug: 
+``` python invnewton_main.py -y x/(x+1) -o 1 -l 3 --sample-N 500 ```
+
+
 # TODO
 Remove extra_options... it's just confusing..

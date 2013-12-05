@@ -13,7 +13,7 @@ int main(){
   double x;
   int itermax = 12;
   double * conv = malloc(itermax*sizeof(double));
-  int success = c_invnewton(y, &x, 1e-13, itermax, 1, conv);
+  int success = c_invnewton(y, &x, 1e-13, 1e-10, 2, itermax, 1, conv);
   printf("success=%d, x=%12.5f\n",success,x);
   print_conv(itermax, conv);
   free(conv);
