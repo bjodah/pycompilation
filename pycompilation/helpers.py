@@ -124,9 +124,15 @@ def assure_dir(path):
     not exist: it is created.
     """
     if os.path.exists(path):
-        assert os.path.isdir(path)
+        if not os.path.isdir(path):
+            raise IOError("{} is not a dir".format(path))
     else:
+        if not os.path.exists(
+                os.path.dirname(path[:-1])):
+            raise IOError("Parent directory to {} non-existant".format(
+                path))
         os.mkdir(path)
+
 
 
 def line_cont_after_delim(ctx, s, line_len=40, delim=(',',),

@@ -17,12 +17,17 @@
   } 
 </%def>
 
-
-void func(const int * const restrict bounds,
-	  const double * const restrict input,
-	  double * restrict output)
+// func takes arbitrary (<~ 2e9) number of ints and doubles as input (inpd/inpi)
+// and populates arbitrary number of ints and doubles in outd/outi
+// returns 0 on successful exit;
+int _arbitrary_func(const int * const restrict bounds,
+		    const double * const restrict inpd,
+		    const int * const restrict inpi,
+		    const double * restrict outd,
+		    const double * restrict outi)
 {
   %for group in expr_groups:
   ${nested_loop(*group) if isinstance(group, ce.Loop) else render_group(group)}
   %endfor
+  return 0;
 }

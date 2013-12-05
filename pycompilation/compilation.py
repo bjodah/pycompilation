@@ -5,7 +5,7 @@ import subprocess
 import shutil
 import re
 
-from .util import HasMetaData, missing_or_other_newer, get_abspath
+from .util import HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath
 from .helpers import (
     find_binary_of_command, uniquify, assure_dir, expand_collection_in_dict
     )
@@ -28,12 +28,9 @@ class CompilationError(Exception):
 
 
 def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
-    class Reader(HasMetaData):
-        metadata_filename = '.metadata_CompilerRunner'
-
     vendor = vendor or os.environ.get('COMPILER_VENDOR', None)
 
-    reader = Reader()
+    reader = MetaReaderWriter('.metadata_CompilerRunner')
 
     if not vendor:
         try:
@@ -120,15 +117,19 @@ class CompilerRunner(object):
 
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
-                 lib_dirs=None, std=None, options=None, defmacros=None, logger=None,
-                 preferred_vendor=None, metadir=None, lib_options=None,
-                 only_update=False):
+                 lib_dirs=None, std=None, options=None, defmacros=None,
+                 logger=None, preferred_vendor=None, metadir=None,
+                 lib_options=None, only_update=False):
         """
         Arguments:
         - `preferred_vendor`: key of compiler_dict
         """
 
         cwd = cwd or '.'
+        metadir = metadir or '.'
+
+        if os.path.isabs(metadir):
+            metadir = os.path.join(cwd, metadir)
 
         if hasattr(sources, '__iter__'):
             self.sources = sources
@@ -137,7 +138,8 @@ class CompilerRunner(object):
 
         self.out = out
         self.flags = flags or []
-        self.metadir = metadir or cwd
+        self.metadir = metadir
+        self.cwd = cwd
         if compiler:
             self.compiler_name, self.compiler_binary = compiler
             self.save_to_metadata_file(
@@ -148,12 +150,11 @@ class CompilerRunner(object):
             # Find a compiler
             self.compiler_name, self.compiler_binary, \
                 self.compiler_vendor = self.find_compiler(
-                    preferred_vendor, metadir=self.metadir)
+                    preferred_vendor, metadir, self.cwd)
             if self.compiler_binary == None:
                 raise RuntimeError(
                     "No compiler found (searched: {0})".format(
                         ', '.join(self.compiler_dict.values())))
-        self.cwd = cwd
         self.defmacros = defmacros or []
         self.inc_dirs = inc_dirs or []
         self.libs = libs or []
@@ -197,8 +198,8 @@ class CompilerRunner(object):
 
 
     @classmethod
-    def find_compiler(cls, preferred_vendor=None,
-                      metadir=None):
+    def find_compiler(cls, preferred_vendor, metadir, cwd,
+                      use_meta=True):
         """
         Identify a suitable C/fortran/other compiler
 
@@ -209,16 +210,18 @@ class CompilerRunner(object):
         make the class save choice there in a file with
         cls.metadata_filename as name.
         """
+        cwd = cwd or '.'
+        metadir = metadir or '.'
+        metadir = os.path.join(cwd, metadir)
         used_metafile = False
-        if not preferred_vendor:
-            if metadir:
-                try:
-                    preferred_vendor = cls.get_from_metadata_file(
-                        metadir, 'vendor')
-                    #pcn = cls.compiler_dict.get(preferred_vendor, None)
-                    used_metafile = True
-                except IOError:
-                    pass
+        if not preferred_vendor and use_meta:
+            try:
+                preferred_vendor = cls.get_from_metadata_file(
+                    metadir, 'vendor')
+                #pcn = cls.compiler_dict.get(preferred_vendor, None)
+                used_metafile = True
+            except IOError:
+                pass
         candidates = cls.compiler_dict.keys()
         if preferred_vendor:
             if preferred_vendor in candidates:
@@ -228,7 +231,9 @@ class CompilerRunner(object):
                     preferred_vendor))
         name, path = find_binary_of_command([
             cls.compiler_dict[x] for x in candidates])
-        if metadir and not used_metafile:
+        if use_meta and not used_metafile:
+            if not os.path.isdir(metadir):
+                raise IOError("Not a dir: {}".format(metadir))
             cls.save_to_metadata_file(metadir, 'compiler',
                                       (name, path))
             cls.save_to_metadata_file(
@@ -273,7 +278,7 @@ class CompilerRunner(object):
                 self.logger.info(('No source newer than {0}.'+\
                              ' Did not compile').format(
                                  self.out))
-                return
+                return self.out
 
         self.flags = uniquify(self.flags)
 
@@ -595,6 +600,9 @@ def compile_py_so(obj_files, CompilerRunner_=None,
 def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                      full_module_name=None, only_update=False,
                      **kwargs):
+    """
+    Generates a .cpp file is cplus=True, else a .c file.
+    """
     from Cython.Compiler.Main import (
         default_options, CompilationOptions
     )
@@ -637,22 +645,6 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     return dstfile
 
 
-def simple_py_c_compile_obj(src,
-                            cplus=False,
-                            **kwargs):
-    """
-    Use e.g. on *.c file written from `simple_cythonize`
-    """
-    from distutils.sysconfig import get_python_inc, get_config_vars
-    inc_dirs = [get_python_inc()]
-    inc_dirs.extend(kwargs.pop('inc_dirs',[]))
-
-    if cplus:
-        return src2obj(src, CppCompilerRunner, inc_dirs=inc_dirs, **kwargs)
-    else:
-        return src2obj(src, CCompilerRunner, inc_dirs=inc_dirs, **kwargs)
-
-
 extension_mapping = {
     '.c': (CCompilerRunner, None),
     '.cpp': (CppCompilerRunner, None),
@@ -668,16 +660,24 @@ extension_mapping = {
 
 
 def src2obj(srcpath, CompilerRunner_=None, objpath=None,
-            only_update=False, cwd=None, out_ext=None, **kwargs):
+            only_update=False, cwd=None, out_ext=None, inc_py=False,
+            **kwargs):
     name, ext = os.path.splitext(os.path.basename(srcpath))
     objpath = objpath or '.'
     out_ext = out_ext or objext
     if os.path.isdir(objpath):
         objpath = os.path.join(objpath, name+out_ext)
 
+    inc_dirs = kwargs.pop('inc_dirs',[])
+    if inc_py:
+        from distutils.sysconfig import get_python_inc, get_config_vars
+        inc_dirs += [get_python_inc()]
+
+
     if CompilerRunner_ == None:
         if ext == 'pyx':
             return pyx2obj(srcpath, objpath=objpath,
+                           inc_dirs=inc_dirs,
                            cwd=cwd, **kwargs)
         CompilerRunner_, std = extension_mapping[ext.lower()]
         if not 'std' in kwargs: kwargs['std'] = std
@@ -692,12 +692,13 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
                 kwargs['logger'].info(msg)
             else:
                 print(msg)
-            return None
+            return objpath
     if os.path.exists(objpath):
         # make sure failed compilation kills the party..
         os.unlink(objpath)
-    runner = CompilerRunner_([srcpath], objpath,
-                             run_linker=run_linker, cwd=cwd, **kwargs)
+    runner = CompilerRunner_(
+        [srcpath], objpath,inc_dirs=inc_dirs,
+        run_linker=run_linker, cwd=cwd, **kwargs)
     runner.run()
     return objpath
 
@@ -717,16 +718,19 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     include_numpy: convenice flag for cython code cimporting numpy
     """
     assert pyxpath.endswith('.pyx')
-
     cwd = cwd or '.'
     objpath = objpath or '.'
-    if os.path.isdir(objpath):
-        pyx_fname = os.path.basename(pyxpath)
-        objpath = os.path.join(objpath, pyx_fname[:-4]+'.o')
-
     interm_c_dir = interm_c_dir or os.path.dirname(objpath)
-    abs_interm_c_dir = get_abspath(interm_c_dir, cwd=cwd)
-    assure_dir(abs_interm_c_dir)
+
+    if os.path.isabs(objpath):
+        abs_objpath = objpath
+    else:
+        abs_objpath = os.path.abspath(os.path.join(cwd, objpath))
+
+    if os.path.isdir(abs_objpath):
+        pyx_fname = os.path.basename(pyxpath)
+        name, ext = os.path.splitext(pyx_fname)
+        objpath = os.path.join(objpath, name+objext)
 
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
@@ -734,10 +738,11 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     if gdb:
         cy_kwargs['gdb_debug'] = True
 
-    interm_c_file = simple_cythonize(pyxpath, dstdir=interm_c_dir,
-                     cwd=cwd, logger=logger,
-                     full_module_name=full_module_name,
-                     only_update=only_update, **cy_kwargs)
+    interm_c_file = simple_cythonize(
+        pyxpath, dstdir=interm_c_dir,
+        cwd=cwd, logger=logger,
+        full_module_name=full_module_name,
+        only_update=only_update, **cy_kwargs)
 
     inc_dirs = inc_dirs or []
     if include_numpy:
@@ -755,8 +760,16 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         std = kwargs.pop('std', 'c++11')
     else:
         std = kwargs.pop('std', 'c99')
-    return simple_py_c_compile_obj(
-        interm_c_file, objpath=objpath, cwd=cwd, logger=logger,
-        only_update=only_update, metadir=metadir,
-        inc_dirs=inc_dirs, cplus=cplus, flags=flags,
-        std=std, options=options, **kwargs)
+    return src2obj(
+        interm_c_file,
+        objpath=objpath,
+        cwd=cwd,
+        only_update=only_update,
+        metadir=metadir,
+        inc_dirs=inc_dirs,
+        flags=flags,
+        std=std,
+        options=options,
+        logger=logger,
+        inc_py = True,
+        **kwargs)

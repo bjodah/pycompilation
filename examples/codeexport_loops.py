@@ -114,10 +114,12 @@ class ExampleCode(C_Code):
         return {'expr_groups': expr_groups}
 
 
-def model1(a_arr, c_, ilim, jlim):
+def model1(inps, lims):
     """
     x[i] = (a[i]/3-1)**i + c
     """
+    a_arr, c_ = inps
+    ilim, jlim = lims
     i_bs = sympy.symbols('i_lb i_ub', integer=True)
     i = sympy.Idx('i', i_bs)
 
@@ -143,7 +145,7 @@ def model1(a_arr, c_, ilim, jlim):
     mod = ex_code.compile_and_import_binary()
 
 
-    x_, y_ = mod.my_callback(a_arr, c_, bounds=(i_bounds, j_bounds))
+    x_, y_ = mod.my_callback(inps, bounds=(i_bounds, j_bounds))
     assert np.allclose(x_, (a_arr/3-1)**np.arange(ilim[0], ilim[1]+1) - c_)
     assert np.allclose(y_, a_arr-np.arange(jlim[0],jlim[1]+1))
 
@@ -157,7 +159,7 @@ def model2():
 def main():
     a_arr = np.linspace(0,10,11)
     c_ = 3.5
-    model1(a_arr, c_, (3,7), (2,6))
+    model1([a_arr, c_], [(3,7), (2,6)])
 
 
 if __name__ == '__main__':

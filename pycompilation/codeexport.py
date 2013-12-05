@@ -292,7 +292,7 @@ class Generic_Code(object):
         compile_sources(sources, self.CompilerRunner, cwd=self._tempdir,
                         inc_dirs=self.inc_dirs,
                         defmacros=self.defmacros,
-                        metadir=self._tempdir, logger=self.logger,
+                        logger=self.logger,
                         **self.compile_kwargs)
 
 
@@ -304,7 +304,6 @@ class Generic_Code(object):
                       libs=self.libs,
                       lib_dirs=self.lib_dirs,
                       defmacros=self.defmacros,
-                      metadir=self._tempdir,
                       logger=self.logger,
                       **self.compile_kwargs)
 

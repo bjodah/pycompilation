@@ -20,6 +20,8 @@ def copy(src, dst, only_update=False):
     """
     shutil.copy with an `only_update` option
     """
+    if not os.path.exists(src):
+        raise IOError("`{}`` does not exist".format(src))
     if only_update:
         if os.path.isdir(dst):
             if not missing_or_other_newer(
@@ -49,7 +51,8 @@ def run_sub_setup(cb, destdir, **kwargs):
     os.chdir(ori_dir)
 
 
-def render_mako_template_to(template, outpath, subsd, only_update=False, cwd=None,
+def render_mako_template_to(template, outpath, subsd,
+                            only_update=False, cwd=None,
                             prev_subsd=None):
     """
     template: either string of path or file like obj.
@@ -82,7 +85,7 @@ def render_mako_template_to(template, outpath, subsd, only_update=False, cwd=Non
             raise
 
         ofh.write(rendered)
-
+    return outpath
 
 
 def md5_of_file(path):
@@ -106,6 +109,7 @@ def missing_or_other_newer(path, other_path, cwd=None):
     if os.path.getmtime(other_path) > os.path.getmtime(path):
         return True
     return False
+
 
 
 class HasMetaData(object):
@@ -144,6 +148,11 @@ class HasMetaData(object):
             pickle.dump(d, open(fullpath,'w'))
         else:
             pickle.dump({key: value}, open(fullpath,'w'))
+
+def MetaReaderWriter(filename):
+    class ReaderWriter(HasMetaData):
+        metadata_filename = filename
+    return ReaderWriter()
 
 
 def import_(filename):

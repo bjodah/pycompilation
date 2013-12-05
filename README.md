@@ -15,8 +15,5 @@ Open Soucrce. Released under the very permissive simplified (2-clause) BSD licen
 
 # Examples
 
-InvNewton still has bugs (try changing to -0.7 and it works): 
-``` python -m pudb invnewton_main.py -y 'tan(x)' -l 5 -o 3 --sample-N 1000 --x-lo -0.8 --x-hi 1.0 ```
-
 # TODO
 
