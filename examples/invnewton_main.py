@@ -29,22 +29,35 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__file__)
 
 
-def make_solver(y, x, ylim, xlim):
+def make_solver(y, x, ylim, xlim, invertible_fitter=None):
     """
     Essentially this does what our invnewton_template.c will
     do, (we need to solve iteratively using newtons method to
     populate the lookup table used in the C routine).
+
+    If invertible_fitter is provided:
     """
     cb_y = lambdify(x, y)
     cb_dydx = lambdify(x, y.diff(x))
 
     y0 = ylim[0]
-    DxDy = (xlim[1]-xlim[0])/(ylim[1]-ylim[0])
-    def inv_y(y, abstol=1e-13, itermax=16, conv=None):
+    if invertible_fitter:
+        pass
+        # TODO:
+        # fit parameterized invertible function
+        # calculated the invese and use as guess
+        fitexpr, params = invertible_fitter
+        cb_fitexpr = lambdify(x, fitexpr)
+    else:
+        DxDy = (xlim[1]-xlim[0])/(ylim[1]-ylim[0])
+    def inv_y(y, abstol=1e-13, itermax=30, conv=None):
         """
         Returns x and error estimate thereof
         """
-        x_ = y0+y*DxDy # guess
+        if invertible_fitter:
+            pass
+        else:
+            x_ = y0+y*DxDy # guess (linear over xspan)
         dy = cb_y(x_)-y
         i=0
         dx=0.0 # could skip while-loop
@@ -197,9 +210,9 @@ class InvNewtonCode(C_Code):
         }
 
 # y=x/(1+x) has the inverse x = y/(1-y), it is monotonic for x>-1 and x<-1 (inc/inc)
-def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
-         x='x', save_temp=True, sample_N=2, check_monotonicity=False,
-         itermax=30):
+def main(yexprstr='x/(1+x)', lookup_N = 5, order=3, x_lo=0.0, x_hi=1.0,
+         x='x', save_temp=True, sample_N=42, check_monotonicity=False,
+         itermax=20):
     # Parse yexprstr
     yexpr = parse_expr(yexprstr, transformations=(
         standard_transformations + (implicit_multiplication_application,)))
@@ -220,8 +233,8 @@ def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
     tempd = './invnewton_build'
     shutil.copy('invnewton_wrapper.pyx', tempd)
     pyxobj = pyx2obj('invnewton_wrapper.pyx', logger=logger)
-    code = InvNewtonCode(yexpr, lookup_N, order, xlim, x, check_monotonicity,
-                         save_temp=save_temp, logger=logger)
+    code = InvNewtonCode(yexpr, lookup_N, order, (x_lo, x_hi), x, check_monotonicity,
+                         save_temp=save_temp, tempdir=tempd, logger=logger)
     ylim = code.ylim
     mod = code.compile_and_import_binary()
     os.unlink(pyxobj) # clean up
@@ -229,7 +242,6 @@ def main(yexprstr='x/(1+x)', lookup_N = 32, order=3, xlim=(0,1),
     # Calculate inverse for some randomly sampled values of y on span
     yspan = ylim[1]-ylim[0]
     yarr = ylim[0]+np.random.random(sample_N)*yspan
-    print('yarr.size={}'.format(yarr.size)) ## DEBUG
     xarr = mod.invnewton(yarr, itermax=itermax)
 
     # Plot the results
