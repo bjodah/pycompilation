@@ -23,9 +23,9 @@ def run_compilation(logger, tempd):
                         cwd=tempd, logger=logger))
     objs.append(pyx2obj('../euclid_wrapper.pyx', cplus=True, cwd=tempd, logger=logger))
 
-    MixedRunner, kwargs, vendor = get_mixed_fort_c_linker(metadir=tempd, cplus=True)
-    expand_collection_in_dict(kwargs, 'lib_options', ['openmp'])
-    so_file = compile_py_so(objs, MixedRunner, cwd=tempd, logger=logger, **kwargs)
+    # MixedRunner, kwargs, vendor = get_mixed_fort_c_linker(metadir=tempd, cplus=True)
+    # expand_collection_in_dict(kwargs, 'lib_options', ['openmp'])
+    so_file = compile_py_so(objs, MixedRunner, cwd=tempd, fort=True, logger=logger, **kwargs)
 
     return os.path.join(tempd, so_file)
 

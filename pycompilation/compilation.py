@@ -12,8 +12,10 @@ from .helpers import (
 
 if os.name == 'posix': # Future improvement to make cross-platform
     flagprefix = '-'
+    objext = '.o'
 elif os.name == 'nt':
     flagprefix = '/'
+    objext = '.obj'
 else:
     raise ImportError("Unknown os name: {}".format(os.name))
 
@@ -177,10 +179,10 @@ class CompilerRunner(object):
 
             # extend based on vendor options dict
             def extend(l, k):
-                l.extend(self.vendor_options_dict.get(
-                self.compiler_vendor,{}).get(
-                    opt, {}).get(
-                        k, []))
+                l.extend(
+                    self.vendor_options_dict.get(
+                        self.compiler_vendor, {}).get(
+                            opt, {}).get(k, []))
             extend(self.flags, 'flags')
             extend(self.defmacros, 'defmacors')
             extend(self.inc_dirs, 'inc_dirs')
@@ -255,7 +257,10 @@ class CompilerRunner(object):
             if os.getenv(envvar) == None:
                 if not envvar in counted:
                     counted.append(envvar)
-                    self.logger.warn("environment variable '{}' undefined.'".format(envvar))
+                    msg = "Environment variable '{}' undefined.".format(
+                        envvar)
+                    raise CompilationError(msg)
+                    self.logger.error(msg)
         return cmd
 
 
@@ -489,8 +494,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
 
 
 def compile_sources(files, CompilerRunner_=None,
-                    destdir=None, cwd=None,
-                    update_only=True, **kwargs):
+                    destdir=None, cwd=None, **kwargs):
     """
     Distutils does not allow to use object files in compilation
     (see http://bugs.python.org/issue5372)
@@ -506,16 +510,17 @@ def compile_sources(files, CompilerRunner_=None,
         taken as relative
     -`cwd`: current working directory. Specify to have compiler run in
         other directory.
-    -`update_only`: True (default) implies only to compile sources
+    -`only_update`: True (default) implies only to compile sources
         newer than their object files.
     -`**kwargs`: keyword arguments pass along to CompilerRunner_
     """
     destdir = destdir or '.'
-    destdir = get_abspath(destdir, cwd=cwd)
+    #destdir = get_abspath(destdir, cwd=cwd)
     dstpaths = []
     for f in files:
         name, ext = os.path.splitext(os.path.basename(f))
-        dstpaths.append(src2obj(f, CompilerRunner_, cwd=cwd, **kwargs))
+        dstpaths.append(src2obj(f, CompilerRunner_,
+                                destdir, cwd=cwd, **kwargs))
     return dstpaths
 
 
@@ -544,7 +549,8 @@ def compile_py_so(obj_files, CompilerRunner_=None,
                     metadir=kwargs.get('metadir', None),
                     cplus=cplus
                 )
-            kwargs.update(extra_kwargs)
+            for k,v in extra_kwargs.items():
+                expand_collection_in_dict(kwargs, k, v)
         else:
             if cplus:
                 CompilerRunner_ = CppCompilerRunner
@@ -590,8 +596,9 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                      full_module_name=None, only_update=False,
                      **kwargs):
     from Cython.Compiler.Main import (
-        default_options, compile, CompilationOptions
+        default_options, CompilationOptions
     )
+    from Cython.Compiler.Main import compile as cy_compile
 
     assert src.lower().endswith('.pyx') or src.lower().endswith('.py')
     cwd = cwd or '.'
@@ -607,7 +614,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
             logger.info(
                 '{0} newer than {1}, did not re-cythonize.'.format(
                 dstfile, src))
-            return
+            return dstfile
 
     if cwd:
         ori_dir = os.getcwd()
@@ -617,8 +624,9 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
 
     cy_options = CompilationOptions(default_options)
     cy_options.__dict__.update(kwargs)
-    if logger: logger.info("Cythonizing {0} to {1}".format(src, dstfile))
-    compile([src], cy_options, full_module_name=full_module_name)
+    if logger: logger.info("Cythonizing {0} to {1}".format(
+            src, dstfile))
+    cy_compile([src], cy_options, full_module_name=full_module_name)
     if os.path.abspath(os.path.dirname(
             src)) != os.path.abspath(dstdir):
         if os.path.exists(dstfile):
@@ -626,8 +634,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
         shutil.move(os.path.join(os.path.dirname(src), c_name),
                     dstdir)
     os.chdir(ori_dir)
-
-
+    return dstfile
 
 
 def simple_py_c_compile_obj(src,
@@ -660,28 +667,37 @@ extension_mapping = {
 }
 
 
-def src2obj(srcpath, CompilerRunner_=None, objpath=None, update_only=False,
-            cwd=None, **kwargs):
+def src2obj(srcpath, CompilerRunner_=None, objpath=None,
+            only_update=False, cwd=None, out_ext=None, **kwargs):
     name, ext = os.path.splitext(os.path.basename(srcpath))
+    objpath = objpath or '.'
+    out_ext = out_ext or objext
+    if os.path.isdir(objpath):
+        objpath = os.path.join(objpath, name+out_ext)
+
     if CompilerRunner_ == None:
-        if ext == 'pyx': return pyx2obj(srcpath, objpath=objpath,
-                                        cwd=cwd, **kwargs) # special case
+        if ext == 'pyx':
+            return pyx2obj(srcpath, objpath=objpath,
+                           cwd=cwd, **kwargs)
         CompilerRunner_, std = extension_mapping[ext.lower()]
         if not 'std' in kwargs: kwargs['std'] = std
 
-    objpath = objpath or name + '.o'
+    # src2obj implies not running the linker...
     run_linker = kwargs.pop('run_linker', False)
 
-    if update_only:
-        if not missing_or_other_newer(dst, f, cwd=cwd):
-            msg = "Found {0}, did not recompile.".format(dst)
+    if only_update:
+        if not missing_or_other_newer(objpath, srcpath, cwd=cwd):
+            msg = "Found {0}, did not recompile.".format(objpath)
             if 'logger' in kwargs:
                 kwargs['logger'].info(msg)
             else:
                 print(msg)
             return None
+    if os.path.exists(objpath):
+        # make sure failed compilation kills the party..
+        os.unlink(objpath)
     runner = CompilerRunner_([srcpath], objpath,
-                     run_linker=run_linker, cwd=cwd, **kwargs)
+                             run_linker=run_linker, cwd=cwd, **kwargs)
     runner.run()
     return objpath
 
@@ -704,7 +720,6 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
 
     cwd = cwd or '.'
     objpath = objpath or '.'
-
     if os.path.isdir(objpath):
         pyx_fname = os.path.basename(pyxpath)
         objpath = os.path.join(objpath, pyx_fname[:-4]+'.o')
@@ -713,17 +728,13 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     abs_interm_c_dir = get_abspath(interm_c_dir, cwd=cwd)
     assure_dir(abs_interm_c_dir)
 
-    ext = '.cpp' if cplus else '.c'
-    interm_c_file = os.path.join(
-        abs_interm_c_dir, os.path.basename(pyxpath)[:-4] + ext)
-
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
     cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
 
-    simple_cythonize(pyxpath, dstdir=interm_c_dir,
+    interm_c_file = simple_cythonize(pyxpath, dstdir=interm_c_dir,
                      cwd=cwd, logger=logger,
                      full_module_name=full_module_name,
                      only_update=only_update, **cy_kwargs)

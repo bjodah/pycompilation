@@ -113,6 +113,7 @@ class Generic_Code(object):
     CompilerRunner = None # Set to a subclass of compilation.CompilerRunner
 
     syntax = None
+    fort = False # form of fortran code? (decisive for linking)
     #preferred_vendor = 'gnu'
     tempdir_basename = 'generic_code'
     _basedir = None
@@ -124,7 +125,7 @@ class Generic_Code(object):
     extension_name = 'generic_extension'
     so_file = None
     extension_name = None
-    comile_kwargs = None # kwargs passed to CompilerRunner
+    compile_kwargs = None # kwargs passed to CompilerRunner
 
     list_attributes = (
         '_written_files', # Track files which are written
@@ -177,6 +178,7 @@ class Generic_Code(object):
             #     setattr(self, lstattr, [])
             # else:
 
+        self.compile_kwargs = self.compile_kwargs or {}
         # If .pyx files in self.templates, add .c file to _cached_files
         self._cached_files += [x.replace('_template','').replace(
             '.pyx','.c') for x in self.templates if x.endswith('.pyx')]
@@ -297,7 +299,9 @@ class Generic_Code(object):
     def _compile_so(self):
         compile_py_so(self.obj_files,
                       so_file=self.so_file,
-                      cwd=self._tempdir, libs=self.libs,
+                      cwd=self._tempdir,
+                      fort=self.fort,
+                      libs=self.libs,
                       lib_dirs=self.lib_dirs,
                       defmacros=self.defmacros,
                       metadir=self._tempdir,
@@ -358,6 +362,7 @@ class F90_Code(Generic_Code):
     """
     Fortran 90 code class
     """
+
     fort = True
 
     # Assume `use iso_c_binding`
@@ -385,7 +390,3 @@ class F90_Code(Generic_Code):
                         names.append(
                             stripped_lower.split('module')[1].strip())
         return names
-
-    def _compile_so(self, **kwargs):
-        kwargs.update({'fort': True})
-        super(F90_Code, self)._compile_so(**kwargs)

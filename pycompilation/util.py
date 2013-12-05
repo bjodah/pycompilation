@@ -34,14 +34,18 @@ def copy(src, dst, only_update=False):
     shutil.copy(src, dst)
 
 
-def run_sub_setup(cwd, cb, logger):
+def run_sub_setup(cb, destdir, **kwargs):
     """
     Useful for calling in a setup.py script
     see symodesys's setup.py for an example
+
+    Pass keyword arg. `cwd` to execute in other
+    directory.
     """
     ori_dir = os.path.abspath(os.curdir)
-    os.chdir(cwd)
-    cb(cwd, logger)
+    os.chdir(kwargs.get('cwd', '.'))
+    assert os.path.isdir(destdir)
+    cb(destdir, **kwargs)
     os.chdir(ori_dir)
 
 
@@ -161,8 +165,8 @@ def import_(filename):
     return mod
 
 
-def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True, logger=None):
-        # Download sources ----------------------------------------
+def download_files(websrc, files, md5sums, cwd=None,
+                   only_if_missing=True, logger=None):
     for f in files:
         fpath = os.path.join(cwd, f) if cwd else f
         if not os.path.exists(fpath):
@@ -175,5 +179,7 @@ def download_files(websrc, files, md5sums, cwd=None, only_if_missing=True, logge
             open(fpath, 'wt').write(urllib2.urlopen(websrc+f).read())
         fmd5 = md5_of_file(fpath).hexdigest()
         if fmd5 != md5sums[f]:
-            raise ValueError("""Warning: MD5 sum of {0} differs from that provided in setup.py.
-            i.e. {1} vs. {2}""".format(f, fmd5, md5sums[f]))
+            raise ValueError(
+                ("Warning: MD5 sum of {0} differs from that provided"+\
+                 " in setup.py. i.e. {1} vs. {2}").format(
+                     f, fmd5, md5sums[f]))
