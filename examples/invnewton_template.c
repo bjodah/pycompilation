@@ -27,7 +27,7 @@ const double lookup_x[${lookup_N*(order+1)}] = {${			\
 
 static double approx_x(double y){
   // Polynomial interpolation between lookup points
-  int idx = ${lookup_N-1}*((y-${ylim[0]})/y_span);
+  int idx = ${lookup_N-1}*((y${"{0:+23.17e}".format(-ylim[0])})/y_span);
   int tbl_offset = ndpp*idx;
   double localy = y-y_space*idx;
   return ${poly_expr}; // lookup_x[tbl_offset+i]
