@@ -13,9 +13,11 @@ from .helpers import (
 if os.name == 'posix': # Future improvement to make cross-platform
     flagprefix = '-'
     objext = '.o'
+    sharedext = '.so'
 elif os.name == 'nt':
     flagprefix = '/'
     objext = '.obj'
+    sharedext = '.dll'
 else:
     raise ImportError("Unknown os name: {}".format(os.name))
 
@@ -529,9 +531,9 @@ def compile_sources(files, CompilerRunner_=None,
     return dstpaths
 
 
-def compile_py_so(obj_files, CompilerRunner_=None,
-                  so_file=None, cwd=None, libs=None,
-                  cplus=False, fort=False, **kwargs):
+def link_py_so(obj_files, CompilerRunner_=None,
+               so_file=None, cwd=None, libs=None,
+               cplus=False, fort=False, **kwargs):
     """
     Generate shared object for importing
 
@@ -542,9 +544,11 @@ def compile_py_so(obj_files, CompilerRunner_=None,
          not specified it will have the basname of the last object
          file in `obj_files` but with the extensino '.so' (Unix
          conventin, Windows users may patch and make a pull request).
+
+    return the absolute to the generate shared object
     """
     libs = libs or []
-    so_file = so_file or os.path.splitext(obj_files[-1])[0]+'.so'
+    so_file = so_file or os.path.splitext(obj_files[-1])[0]+sharedext
 
     if not CompilerRunner_:
         if fort:
@@ -565,9 +569,6 @@ def compile_py_so(obj_files, CompilerRunner_=None,
     from distutils.sysconfig import get_config_vars
     inc_dirs = kwargs.pop('inc_dirs', [])
     lib_dirs = kwargs.pop('lib_dirs', [])
-    # lds = filter(lambda x: len(x)>0, os.environ.get(
-    #     'LD_LIBRARY_PATH', '').split(':'))
-    # lib_dirs.extend(lds)
     libs += [x[2:] for x in get_config_vars(
         'BLDLIBRARY')[0].split() if x.startswith('-l')]
     cc = get_config_vars('BLDSHARED')[0]
@@ -586,6 +587,9 @@ def compile_py_so(obj_files, CompilerRunner_=None,
 
     flags.extend(kwargs.pop('flags',[]))
 
+    if not os.path.isabs(so_file):
+        so_file = os.path.join(os.path.abspath(
+            cwd), so_file)
     runner = CompilerRunner_(
         obj_files, so_file, flags,
         cwd=cwd,
@@ -599,7 +603,7 @@ def compile_py_so(obj_files, CompilerRunner_=None,
 
 def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                      full_module_name=None, only_update=False,
-                     **kwargs):
+                     **cy_kwargs):
     """
     Generates a .cpp file is cplus=True, else a .c file.
     """
@@ -612,7 +616,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     cwd = cwd or '.'
     dstdir = dstdir or '.'
 
-    ext = '.cpp' if kwargs['cplus'] else '.c'
+    ext = '.cpp' if cy_kwargs['cplus'] else '.c'
     c_name = os.path.splitext(os.path.basename(src))[0] + ext
 
     dstfile = os.path.join(dstdir, c_name)
@@ -631,7 +635,7 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
     os.chdir(cwd)
 
     cy_options = CompilationOptions(default_options)
-    cy_options.__dict__.update(kwargs)
+    cy_options.__dict__.update(cy_kwargs)
     if logger: logger.info("Cythonizing {0} to {1}".format(
             src, dstfile))
     cy_compile([src], cy_options, full_module_name=full_module_name)
@@ -697,7 +701,7 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
         # make sure failed compilation kills the party..
         os.unlink(objpath)
     runner = CompilerRunner_(
-        [srcpath], objpath,inc_dirs=inc_dirs,
+        [srcpath], objpath, inc_dirs=inc_dirs,
         run_linker=run_linker, cwd=cwd, **kwargs)
     runner.run()
     return objpath
@@ -737,6 +741,8 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
+    if inc_dirs:
+        cy_kwargs['include_path'] = inc_dirs
 
     interm_c_file = simple_cythonize(
         pyxpath, dstdir=interm_c_dir,

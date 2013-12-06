@@ -4,7 +4,7 @@
 import os
 import logging
 from shutil import copy
-from pycompilation import src2obj, pyx2obj, compile_py_so, CppCompilerRunner, import_, get_mixed_fort_c_linker
+from pycompilation import src2obj, pyx2obj, link_py_so, CppCompilerRunner, import_, get_mixed_fort_c_linker
 
 from pycompilation.helpers import expand_collection_in_dict
 
@@ -25,7 +25,7 @@ def run_compilation(logger, tempd):
 
     # MixedRunner, kwargs, vendor = get_mixed_fort_c_linker(metadir=tempd, cplus=True)
     # expand_collection_in_dict(kwargs, 'lib_options', ['openmp'])
-    so_file = compile_py_so(objs, MixedRunner, cwd=tempd, fort=True, logger=logger, **kwargs)
+    so_file = link_py_so(objs, MixedRunner, cwd=tempd, fort=True, logger=logger, **kwargs)
 
     return os.path.join(tempd, so_file)
 

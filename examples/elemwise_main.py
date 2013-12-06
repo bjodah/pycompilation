@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from pycompilation import pyx2obj, compile_sources, compile_py_so, import_
+from pycompilation import pyx2obj, compile_sources, link_py_so, import_
 from pycompilation.util import render_mako_template_to
 
 from operator import add, mul, sub, div, pow
@@ -23,7 +23,7 @@ def run_compilation(tempd, logger=None):
                     std='c99',
                     run_linker=False, logger=logger)
 
-    so_file = compile_py_so(['elemwise.o', 'elemwise_wrapper.o'],
+    so_file = link_py_so(['elemwise.o', 'elemwise_wrapper.o'],
                   options=['openmp'], cwd=tempd, logger=logger
               )
     return os.path.join(tempd, so_file)

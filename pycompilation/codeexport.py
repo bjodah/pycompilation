@@ -37,7 +37,7 @@ from .helpers import defaultnamedtuple
 from .util import import_, render_mako_template_to
 from .compilation import (
     FortranCompilerRunner, CCompilerRunner,
-    CppCompilerRunner, compile_py_so, compile_sources)
+    CppCompilerRunner, link_py_so, compile_sources)
 from .helpers import defaultnamedtuple
 
 
@@ -297,17 +297,15 @@ class Generic_Code(object):
 
 
     def _compile_so(self):
-        compile_py_so(self.obj_files,
-                      so_file=self.so_file,
+        link_py_so(self.obj_files,
+                   so_file=self.so_file,
                       cwd=self._tempdir,
-                      fort=self.fort,
-                      libs=self.libs,
-                      lib_dirs=self.lib_dirs,
-                      defmacros=self.defmacros,
-                      logger=self.logger,
-                      **self.compile_kwargs)
-
-
+                   fort=self.fort,
+                   libs=self.libs,
+                   lib_dirs=self.lib_dirs,
+                   defmacros=self.defmacros,
+                   logger=self.logger,
+                   **self.compile_kwargs)
 
 
 class Cython_Code(Generic_Code):

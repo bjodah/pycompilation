@@ -7,7 +7,7 @@ import logging
 import numpy as np
 
 from pycompilation import (
-    compile_sources, pyx2obj, compile_py_so,
+    compile_sources, pyx2obj, link_py_so,
     FortranCompilerRunner, import_
 )
 
@@ -18,7 +18,7 @@ def run_compilation(tempd, logger=None):
                     cwd=tempd, options=['pic', 'warn', 'fast','f90'],
                     run_linker=False, logger=logger)
     pyx2obj('../mtxmul_wrapper.pyx', cwd=tempd, logger=logger)
-    so_file = compile_py_so(['mtxmul.o', 'mtxmul_wrapper.o'],
+    so_file = link_py_so(['mtxmul.o', 'mtxmul_wrapper.o'],
                             FortranCompilerRunner,
                             cwd=tempd, logger=logger)
     return os.path.join(tempd, so_file)

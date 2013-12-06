@@ -34,15 +34,26 @@ def get_abspath(path, cwd=None):
             os.path.join(cwd, path)
         )
 
-def copy(src, dst, only_update=False, copystat=True):
+def copy(src, dst, only_update=False, copystat=True, cwd=None):
     """
-    shutil.copy with an `only_update` option
+    Augmented shutil.copy with extra options and slightly modified behaviour
+    Arguments:
+    -`only_update`: only copy if source is newer than destination (returns None)
+
+    returns absolute path of dst if copy was performed
     """
+    if cwd:
+        if not os.path.isabs(src):
+            src = os.path.join(cwd, src)
+        if not os.path.isabs(dst):
+            dst = os.path.join(cwd, dst)
+
     if not os.path.exists(src):
         # Source needs to exist
-        msg = "`{}` does not exist".format(src)
+        msg = "Source: `{}` does not exist".format(src)
         print(msg) # distutils just spits out `error: None`
         raise IOError(msg)
+
     if os.path.exists(dst):
         if os.path.isfile(dst):
             pass
@@ -61,11 +72,12 @@ def copy(src, dst, only_update=False, copystat=True):
                 print(msg) # distutils just spits out `error: None`
                 raise IOError(msg)
     if only_update:
-        if not missing_or_other_newer(src, dst):
+        if not missing_or_other_newer(dst, src):
             return
     shutil.copy(src, dst)
     if copystat:
         shutil.copystat(src, dst)
+    return dst
 
 
 def run_sub_setup(cb, destdir, **kwargs):
