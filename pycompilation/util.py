@@ -7,6 +7,24 @@ from mako.template import Template
 from mako.exceptions import text_error_template
 
 
+def term_fmt(s, fg=('red','black')):
+    """
+    See http://ascii-table.com/ansi-escape-sequences.php
+    """
+    fgi = {
+        'black': 30,
+        'red': 31,
+        'green': 32,
+        'yellow': 33,
+        'blue': 34,
+        'magenta': 35,
+        'cyan': 36,
+        'white': 37,
+        }
+    return '\033[{};1m'.format(fgi[fg[0].lower()])+\
+        s+ '\033[{};0m'.format(fgi[fg[1].lower()])
+
+
 def get_abspath(path, cwd=None):
     if os.path.isabs(path):
         return path
@@ -16,24 +34,38 @@ def get_abspath(path, cwd=None):
             os.path.join(cwd, path)
         )
 
-def copy(src, dst, only_update=False):
+def copy(src, dst, only_update=False, copystat=True):
     """
     shutil.copy with an `only_update` option
     """
     if not os.path.exists(src):
-        raise IOError("`{}`` does not exist".format(src))
-    if only_update:
-        if os.path.isdir(dst):
-            if not missing_or_other_newer(
-                    os.path.join(
-                        dst,
-                        os.path.basename(src)), src):
-                return
+        # Source needs to exist
+        msg = "`{}` does not exist".format(src)
+        print(msg) # distutils just spits out `error: None`
+        raise IOError(msg)
+    if os.path.exists(dst):
+        if os.path.isfile(dst):
+            pass
+        elif os.path.isdir(dst):
+            dst = os.path.join(dst, os.path.basename(src))
         else:
-            if not missing_or_other_newer(
-                    dst, src):
-                return
+            raise NotImplementedError
+    else:
+        if dst[-1] == '/':
+            msg = "You must create directory first."
+            print(msg) # distutils just spits out `error: None`
+            raise IOError(msg)
+        else:
+            if not os.path.exists(os.path.dirname(dst[:-1])):
+                msg = "You must create directory first."
+                print(msg) # distutils just spits out `error: None`
+                raise IOError(msg)
+    if only_update:
+        if not missing_or_other_newer(src, dst):
+            return
     shutil.copy(src, dst)
+    if copystat:
+        shutil.copystat(src, dst)
 
 
 def run_sub_setup(cb, destdir, **kwargs):

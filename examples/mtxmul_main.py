@@ -11,7 +11,7 @@ from pycompilation import (
     FortranCompilerRunner, import_
 )
 
-from pycompilation.helpers import term_fmt
+from pycompilation.util import term_fmt
 
 def run_compilation(tempd, logger=None):
     compile_sources(['../mtxmul.f90'], FortranCompilerRunner,

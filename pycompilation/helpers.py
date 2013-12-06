@@ -9,24 +9,6 @@ except ImportError:
 from distutils.spawn import find_executable
 
 
-def term_fmt(s, fg=('red','black')):
-    """
-    See http://ascii-table.com/ansi-escape-sequences.php
-    """
-    fgi = {
-        'black': 30,
-        'red': 31,
-        'green': 32,
-        'yellow': 33,
-        'blue': 34,
-        'magenta': 35,
-        'cyan': 36,
-        'white': 37,
-        }
-    return '\033[{};1m'.format(fgi[fg[0].lower()])+\
-        s+ '\033[{};0m'.format(fgi[fg[1].lower()])
-
-
 def uniquify(l):
     result = []
     for x in l:
