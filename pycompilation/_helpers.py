@@ -8,6 +8,12 @@ except ImportError:
 
 from distutils.spawn import find_executable
 
+class CompilationError(Exception):
+    pass
+
+class FileNotFoundError(Exception):
+    pass
+
 
 def uniquify(l):
     result = []

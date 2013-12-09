@@ -6,13 +6,16 @@ from hashlib import md5
 from mako.template import Template
 from mako.exceptions import text_error_template
 
+from ._helpers import FileNotFoundError
+
 def expand_collection_in_dict(d, key, new_items, no_duplicates=True):
     if key in d:
         if isinstance(d[key], set):
             map(d[key].add, new_items)
         elif isinstance(d[key], list):
             if no_duplicates:
-                new_items = filter(lambda x: x not in d[key], new_items)
+                new_items = filter(
+                    lambda x: x not in d[key], new_items)
             map(d[key].append, new_items)
         else:
             d[key] = d[key] + new_items
@@ -49,7 +52,18 @@ def get_abspath(path, cwd=None):
             os.path.join(cwd, path)
         )
 
-def copy(src, dst, only_update=False, copystat=True, cwd=None):
+def make_dirs(path):
+    parent = os.path.dirname(path[:-1])
+    if not os.path.exists(parent):
+        make_dirs(parent)
+    else:
+        if not os.path.exists(path):
+            os.mkdir(path, 0o777)
+        else:
+            assert os.path.isdir(path)
+
+def copy(src, dst, only_update=False, copystat=True, cwd=None,
+         dest_is_dir=False, create_dest_dirs=False):
     """
     Augmented shutil.copy with extra options and slightly modified behaviour
     Arguments:
@@ -57,6 +71,9 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None):
 
     returns absolute path of dst if copy was performed
     """
+    if dest_is_dir:
+        if not dst[-1] == '/': dst = dst+'/'
+
     if cwd:
         if not os.path.isabs(src):
             src = os.path.join(cwd, src)
@@ -67,25 +84,32 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None):
         # Source needs to exist
         msg = "Source: `{}` does not exist".format(src)
         print(msg) # distutils just spits out `error: None`
-        raise IOError(msg)
+        raise FileNotFoundError(msg)
 
     if os.path.exists(dst):
         if os.path.isfile(dst):
             pass
         elif os.path.isdir(dst):
+            os.chmod(dst, 0o700)
             dst = os.path.join(dst, os.path.basename(src))
         else:
             raise NotImplementedError
     else:
         if dst[-1] == '/':
-            msg = "You must create directory first."
-            print(msg) # distutils just spits out `error: None`
-            raise IOError(msg)
-        else:
-            if not os.path.exists(os.path.dirname(dst[:-1])):
+            if not create_dest_dirs:
                 msg = "You must create directory first."
                 print(msg) # distutils just spits out `error: None`
-                raise IOError(msg)
+                raise FileNotFoundError(msg)
+            else:
+                make_dirs(dst)
+        else:
+            if not os.path.exists(os.path.dirname(dst)):
+                if not create_dest_dirs:
+                    msg = "You must create directory first."
+                    print(msg) # distutils just spits out `error: None`
+                    raise FileNotFoundError(msg)
+                else:
+                    make_dirs(os.path.dirname(dst))
     if only_update:
         if not missing_or_other_newer(dst, src):
             return
@@ -193,7 +217,8 @@ class HasMetaData(object):
             d = pickle.load(open(fullpath,'r'))
             return d[key] #.get(cls._get_metadata_key(key), None)
         else:
-            raise IOError("No such file: {0}".format(fullpath))
+            raise FileNotFoundError(
+                "No such file: {0}".format(fullpath))
 
     @classmethod
     def save_to_metadata_file(cls, dirpath, key, value):

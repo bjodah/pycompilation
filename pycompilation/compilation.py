@@ -7,7 +7,7 @@ import re
 
 from .util import HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath, expand_collection_in_dict
 from ._helpers import (
-    find_binary_of_command, uniquify, assure_dir
+    find_binary_of_command, uniquify, assure_dir, CompilationError, FileNotFoundError
 )
 
 if os.name == 'posix': # Future improvement to make cross-platform
@@ -22,11 +22,7 @@ else:
     raise ImportError("Unknown os.name: {}".format(os.name))
 
 
-default_compile_options = ['warn', 'pic']
-
-
-class CompilationError(Exception):
-    pass
+default_compile_options = ('warn', 'pic', 'fast')
 
 
 def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
@@ -217,7 +213,7 @@ class CompilerRunner(object):
                     metadir, 'vendor')
                 #pcn = cls.compiler_dict.get(preferred_vendor, None)
                 used_metafile = True
-            except IOError:
+            except FileNotFoundError:
                 pass
         candidates = cls.compiler_dict.keys()
         if preferred_vendor:
@@ -230,7 +226,7 @@ class CompilerRunner(object):
             cls.compiler_dict[x] for x in candidates])
         if use_meta and not used_metafile:
             if not os.path.isdir(metadir):
-                raise IOError("Not a dir: {}".format(metadir))
+                raise FileNotFoundError("Not a dir: {}".format(metadir))
             cls.save_to_metadata_file(metadir, 'compiler',
                                       (name, path))
             cls.save_to_metadata_file(
