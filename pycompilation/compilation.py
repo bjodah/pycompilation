@@ -167,6 +167,8 @@ class CompilerRunner(object):
             self.flags.append(self.std_formater[
                 self.compiler_name](self.std))
 
+        self.linkline = []
+
         for opt in self.options:
             self.flags.extend(self.option_flag_dict.get(
                 self.compiler_name, {}).get(opt,[]))
@@ -182,7 +184,7 @@ class CompilerRunner(object):
             extend(self.inc_dirs, 'inc_dirs')
             extend(self.lib_dirs, 'lib_dirs')
             extend(self.libs, 'libs')
-            extend(self.sources, 'linkline')
+            extend(self.linkline, 'linkline')
 
         # libs
         for lib_opt in self.lib_options:
@@ -249,7 +251,8 @@ class CompilerRunner(object):
               ['-I'+x for x in self.inc_dirs] +\
               self.sources + \
               ['-L'+x for x in self.lib_dirs] +\
-              ['-l'+x for x in self.libs]
+              ['-l'+x for x in self.libs] +\
+              self.linkline
         counted = []
         for envvar in re.findall('\$\{(\w+)\}', ' '.join(cmd)):
             if os.getenv(envvar) == None:
