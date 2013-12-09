@@ -1,5 +1,5 @@
 
-from pycompilation.helpers import defaultnamedtuple
+from pycompilation._helpers import defaultnamedtuple
 
 def test_defaultnamedtuple():
     Point2 = defaultnamedtuple('Point2', 'x y', [10])

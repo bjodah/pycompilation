@@ -5,10 +5,10 @@ import subprocess
 import shutil
 import re
 
-from .util import HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath
-from .helpers import (
-    find_binary_of_command, uniquify, assure_dir, expand_collection_in_dict
-    )
+from .util import HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath, expand_collection_in_dict
+from ._helpers import (
+    find_binary_of_command, uniquify, assure_dir
+)
 
 if os.name == 'posix': # Future improvement to make cross-platform
     flagprefix = '-'
@@ -19,7 +19,7 @@ elif os.name == 'nt':
     objext = '.obj'
     sharedext = '.dll'
 else:
-    raise ImportError("Unknown os name: {}".format(os.name))
+    raise ImportError("Unknown os.name: {}".format(os.name))
 
 
 default_compile_options = ['warn', 'pic']
@@ -29,17 +29,15 @@ class CompilationError(Exception):
     pass
 
 
-def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False):
+def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
+                            cwd=None):
     vendor = vendor or os.environ.get('COMPILER_VENDOR', None)
 
-    reader = MetaReaderWriter('.metadata_CompilerRunner')
 
     if not vendor:
-        try:
-            metadir = metadir or '.'
-            vendor = reader.get_from_metadata_file(metadir, 'vendor')
-        except IOError:
-            vendor = 'gnu'
+        metadir = get_abspath(metadir or '.', cwd=cwd)
+        reader = MetaReaderWriter('.metadata_CompilerRunner')
+        vendor = reader.get_from_metadata_file(metadir, 'vendor')
 
     if vendor == 'intel':
         if cplus:
@@ -128,10 +126,7 @@ class CompilerRunner(object):
         """
 
         cwd = cwd or '.'
-        metadir = metadir or '.'
-
-        if os.path.isabs(metadir):
-            metadir = os.path.join(cwd, metadir)
+        metadir = get_abspath(metadir or '.', cwd=cwd)
 
         if hasattr(sources, '__iter__'):
             self.sources = sources
@@ -556,7 +551,8 @@ def link_py_so(obj_files, CompilerRunner_=None,
                 get_mixed_fort_c_linker(
                     vendor=kwargs.get('vendor', None),
                     metadir=kwargs.get('metadir', None),
-                    cplus=cplus
+                    cplus=cplus,
+                    cwd=cwd,
                 )
             for k,v in extra_kwargs.items():
                 expand_collection_in_dict(kwargs, k, v)
@@ -587,9 +583,7 @@ def link_py_so(obj_files, CompilerRunner_=None,
 
     flags.extend(kwargs.pop('flags',[]))
 
-    if not os.path.isabs(so_file):
-        so_file = os.path.join(os.path.abspath(
-            cwd), so_file)
+    so_file = get_abspath(so_file, cwd=cwd)
     runner = CompilerRunner_(
         obj_files, so_file, flags,
         cwd=cwd,
@@ -679,7 +673,7 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
 
 
     if CompilerRunner_ == None:
-        if ext == 'pyx':
+        if ext.lower() == '.pyx':
             return pyx2obj(srcpath, objpath=objpath,
                            inc_dirs=inc_dirs,
                            cwd=cwd, **kwargs)
@@ -726,10 +720,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     objpath = objpath or '.'
     interm_c_dir = interm_c_dir or os.path.dirname(objpath)
 
-    if os.path.isabs(objpath):
-        abs_objpath = objpath
-    else:
-        abs_objpath = os.path.abspath(os.path.join(cwd, objpath))
+    abs_objpath = get_abspath(objpath, cwd=cwd)
 
     if os.path.isdir(abs_objpath):
         pyx_fname = os.path.basename(pyxpath)

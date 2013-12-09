@@ -33,7 +33,7 @@ import sympy
 
 
 # Intrapackage imports
-from .helpers import defaultnamedtuple
+from ._helpers import defaultnamedtuple
 from .util import import_, render_mako_template_to
 from .compilation import (
     FortranCompilerRunner, CCompilerRunner,

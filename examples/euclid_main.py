@@ -3,35 +3,44 @@
 
 import os
 import logging
+import tempfile
 from shutil import copy
 from pycompilation import src2obj, pyx2obj, link_py_so, CppCompilerRunner, import_, get_mixed_fort_c_linker
 
-from pycompilation.helpers import expand_collection_in_dict
+from pycompilation.util import expand_collection_in_dict
 
-def run_compilation(logger, tempd):
+examples_dir =  os.path.abspath(os.path.dirname(__file__))
+files = ['euclid.hpp', 'euclid_enorm.f90', 'euclid.cpp', 'euclid_wrapper.pyx']
+options=['pic', 'warn', 'fast']
+options_omp = options+['openmp']
+
+def run_compilation(**kwargs):
     """
-    Compiles and links Cython wrapped C++ function (which calls into an
-    OpenMP enabled Fortran 2003 routine)
+    Compiles and links Cython wrapped C++ function
+    (which calls into an OpenMP enabled Fortran 2003 routine)
     """
-    copy('euclid.hpp', tempd)
-    objs = []
-    objs.append(src2obj(
-        '../euclid_enorm.f90',
-        options=['pic', 'fast', 'warn', 'openmp'],
-        cwd=tempd, logger=logger))
-    objs.append(src2obj('../euclid.cpp', std='c++11', options=['warn','pic','fast'],
-                        cwd=tempd, logger=logger))
-    objs.append(pyx2obj('../euclid_wrapper.pyx', cplus=True, cwd=tempd, logger=logger))
+    for f in files:
+        copy(f, kwargs['cwd'])
+    objs = [
+        src2obj('euclid_enorm.f90',
+                options=options_omp,
+                **kwargs),
+        src2obj('euclid.cpp',
+                std='c++11',
+                options=options,
+                **kwargs),
+        pyx2obj('euclid_wrapper.pyx',
+                cplus=True, **kwargs)
+    ]
 
-    # MixedRunner, kwargs, vendor = get_mixed_fort_c_linker(metadir=tempd, cplus=True)
-    # expand_collection_in_dict(kwargs, 'lib_options', ['openmp'])
-    so_file = link_py_so(objs, MixedRunner, cwd=tempd, fort=True, logger=logger, **kwargs)
-
-    return os.path.join(tempd, so_file)
+    # Link a mixed C++/Fortran extension (shared object)
+    return link_py_so(objs, cplus=True, fort=True,
+                      options=options_omp, **kwargs)
 
 
-def main(logger):
-    so_file_path = run_compilation(logger, 'euclid_build')
+def main(logger=None, clean=False):
+    build_dir = tempfile.mkdtemp('euclid')
+    so_file_path = run_compilation(logger=logger, cwd=build_dir)
     mod = import_(so_file_path)
 
     l = [[3,4],[4,3]]
@@ -52,6 +61,11 @@ def main(logger):
         pass
     else:
         raise
+
+    if clean:
+        shutil.rmtree(build_dir)
+    else:
+        print("build files left in: {}".format(build_dir))
 
 
 if __name__ == '__main__':

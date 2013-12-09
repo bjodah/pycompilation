@@ -6,6 +6,19 @@ from hashlib import md5
 from mako.template import Template
 from mako.exceptions import text_error_template
 
+def expand_collection_in_dict(d, key, new_items, no_duplicates=True):
+    if key in d:
+        if isinstance(d[key], set):
+            map(d[key].add, new_items)
+        elif isinstance(d[key], list):
+            if no_duplicates:
+                new_items = filter(lambda x: x not in d[key], new_items)
+            map(d[key].append, new_items)
+        else:
+            d[key] = d[key] + new_items
+    else:
+        d[key] = new_items
+
 
 def term_fmt(s, fg=('red','black')):
     """
@@ -30,6 +43,8 @@ def get_abspath(path, cwd=None):
         return path
     else:
         cwd = cwd or '.'
+        if not os.path.isabs(cwd):
+            cwd = os.path.abspath(cwd)
         return os.path.abspath(
             os.path.join(cwd, path)
         )

@@ -17,20 +17,6 @@ def uniquify(l):
     return result
 
 
-def expand_collection_in_dict(d, key, new_items, no_duplicates=True):
-    if key in d:
-        if isinstance(d[key], set):
-            map(d[key].add, new_items)
-        elif isinstance(d[key], list):
-            if no_duplicates:
-                new_items = filter(lambda x: x not in d[key], new_items)
-            map(d[key].append, new_items)
-        else:
-            d[key] = d[key] + new_items
-    else:
-        d[key] = new_items
-
-
 def find_binary_of_command(candidates):
     """
     Calls `find_executable` from distuils for

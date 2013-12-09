@@ -88,9 +88,8 @@ def bench_binary_op(py_op, cb, a, b):
 
 
 
-
 def main(logger=None, clean=False):
-    tempd = './elemwise_build'
+    tempd = tempfile.mkdtemp('elemwise')
     generate_code(tempd)
     sofilepath = run_compilation(tempd, logger=logger)
     mod = import_(sofilepath)
@@ -112,6 +111,8 @@ def main(logger=None, clean=False):
 
     if clean:
         shutil.rmtree(tempd)
+    else:
+        print("build files left in: {}".format(tempd))
 
 
 if __name__ == '__main__':

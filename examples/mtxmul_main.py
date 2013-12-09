@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import tempfile
 import logging
 
 import numpy as np
@@ -11,23 +12,24 @@ from pycompilation import (
     FortranCompilerRunner, import_
 )
 
-from pycompilation.util import term_fmt
+from pycompilation.util import term_fmt, copy
 
-def run_compilation(tempd, logger=None):
-    compile_sources(['../mtxmul.f90'], FortranCompilerRunner,
-                    cwd=tempd, options=['pic', 'warn', 'fast','f90'],
-                    run_linker=False, logger=logger)
-    pyx2obj('../mtxmul_wrapper.pyx', cwd=tempd, logger=logger)
-    so_file = link_py_so(['mtxmul.o', 'mtxmul_wrapper.o'],
-                            FortranCompilerRunner,
-                            cwd=tempd, logger=logger)
-    return os.path.join(tempd, so_file)
+examples_dir =  os.path.abspath(os.path.dirname(__file__))
+files = ['mtxmul.f90', 'mtxmul_wrapper.pyx']
+options=['pic', 'warn', 'fast']
 
-def main(logger):
+def run_compilation(**kwargs):
+    for f in files:
+        copy(os.path.join(examples_dir, f), kwargs.get('cwd', None))
+    objs = compile_sources(files, options=options, **kwargs)
+    return link_py_so(objs, fort=True, **kwargs)
+
+def main(logger=None, clean=False):
     """
     Example program showing how to wrap fortran code using Cython
     """
-    so_file_path = run_compilation('./mtxmul_build', logger=logger)
+    build_dir = tempfile.mkdtemp('mtxmul')
+    so_file_path = run_compilation(cwd=build_dir, logger=logger)
     mod = import_(so_file_path)
 
     A = np.random.random((7,9))
@@ -36,6 +38,12 @@ def main(logger):
     assert C.shape == (7, 13)
     assert np.allclose(np.dot(A,B), C)
     print(term_fmt("Passed!",('green', 'black')))
+
+    if clean:
+        shutil.rmtree(build_dir)
+    else:
+        print("build files left in: {}".format(build_dir))
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
