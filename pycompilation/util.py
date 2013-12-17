@@ -67,6 +67,7 @@ def make_dirs(path):
     else:
         assert os.path.isdir(path)
 
+
 def copy(src, dst, only_update=False, copystat=True, cwd=None,
          dest_is_dir=False, create_dest_dirs=False):
     """

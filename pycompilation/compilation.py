@@ -526,8 +526,7 @@ def compile_sources(files, CompilerRunner_=None,
             name, ext = os.path.splitext(f)
         else:
             name, ext = os.path.splitext(os.path.basename(f))
-        dstpaths.append(src2obj(f, CompilerRunner_,
-                                destdir, cwd=cwd, **kwargs))
+        dstpaths.append(src2obj(f, CompilerRunner_, cwd=cwd, **kwargs))
     return dstpaths
 
 
@@ -666,7 +665,11 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
             only_update=False, cwd=None, out_ext=None, inc_py=False,
             **kwargs):
     name, ext = os.path.splitext(os.path.basename(srcpath))
-    objpath = objpath or '.'
+    if objpath == None:
+        if os.path.isabs(srcpath):
+            objpath = '.'
+        else:
+            objpath = os.path.dirname(srcpath)
     out_ext = out_ext or objext
     if os.path.isdir(objpath):
         objpath = os.path.join(objpath, name+out_ext)
