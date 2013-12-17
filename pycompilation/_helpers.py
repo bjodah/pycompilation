@@ -131,3 +131,15 @@ def line_cont_after_delim(ctx, s, line_len=40, delim=(',',),
                     ctx, s[i+1:], line_len, delim)
             last = i
     return s
+
+
+def pyx_is_cplus(path):
+    for line in open(path, 'rt'):
+        if line.startswith('#') and '=' in line:
+            splitted = line.split('=')
+            if len(splitted) != 2: continue
+            lhs, rhs = splitted
+            if lhs.strip().split()[-1].lower() == 'language' and \
+               rhs.strip().split()[0].lower() == 'c++':
+                    return True
+    return False

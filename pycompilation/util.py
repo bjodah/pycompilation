@@ -53,66 +53,74 @@ def get_abspath(path, cwd=None):
         )
 
 def make_dirs(path):
-    parent = os.path.dirname(path[:-1])
-    if not os.path.exists(parent):
-        make_dirs(parent)
+    if path[-1] == '/':
+        parent = os.path.dirname(path[:-1])
     else:
-        if not os.path.exists(path):
-            os.mkdir(path, 0o777)
-        else:
-            assert os.path.isdir(path)
+        parent = os.path.dirname(path)
+
+    if len(parent) > 0:
+        if not os.path.exists(parent):
+            make_dirs(parent)
+
+    if not os.path.exists(path):
+        os.mkdir(path, 0o777)
+    else:
+        assert os.path.isdir(path)
 
 def copy(src, dst, only_update=False, copystat=True, cwd=None,
          dest_is_dir=False, create_dest_dirs=False):
     """
-    Augmented shutil.copy with extra options and slightly modified behaviour
+    Augmented shutil.copy with extra options and slightly
+    modified behaviour
+
     Arguments:
-    -`only_update`: only copy if source is newer than destination (returns None)
+    -`only_update`: only copy if source is newer
+        than destination (returns None)
 
     returns absolute path of dst if copy was performed
     """
-    if dest_is_dir:
-        if not dst[-1] == '/': dst = dst+'/'
-
+    # Handle virtual working directory
     if cwd:
         if not os.path.isabs(src):
             src = os.path.join(cwd, src)
         if not os.path.isabs(dst):
             dst = os.path.join(cwd, dst)
 
+    # Make sure source file extists
     if not os.path.exists(src):
         # Source needs to exist
         msg = "Source: `{}` does not exist".format(src)
         print(msg) # distutils just spits out `error: None`
         raise FileNotFoundError(msg)
 
-    if os.path.exists(dst):
-        if os.path.isfile(dst):
-            pass
-        elif os.path.isdir(dst):
-            os.chmod(dst, 0o700)
-            dst = os.path.join(dst, os.path.basename(src))
-        else:
-            raise NotImplementedError
+    # We accept both (re)naming destination file _or_
+    # passing a (possible non-existant) destination directory
+    if dest_is_dir:
+        if not dst[-1] == '/': dst = dst+'/'
     else:
-        if dst[-1] == '/':
-            if not create_dest_dirs:
-                msg = "You must create directory first."
-                print(msg) # distutils just spits out `error: None`
-                raise FileNotFoundError(msg)
-            else:
-                make_dirs(dst)
+        if os.path.exists(dst) and os.path.isdir(dst):
+            dest_is_dir = True
+
+    if dest_is_dir:
+        dest_dir = dst
+        dest_fname = os.path.basename(src)
+        dst = os.path.join(dest_dir, dest_fname)
+    else:
+        dest_dir = os.path.dirname(dst)
+        dest_fname = os.path.basename(dst)
+
+    if not os.path.exists(dest_dir):
+        if create_dest_dirs:
+            make_dirs(dest_dir)
         else:
-            if not os.path.exists(os.path.dirname(dst)):
-                if not create_dest_dirs:
-                    msg = "You must create directory first."
-                    print(msg) # distutils just spits out `error: None`
-                    raise FileNotFoundError(msg)
-                else:
-                    make_dirs(os.path.dirname(dst))
+            msg = "You must create directory first."
+            print(msg) # distutils just spits out `error: None`
+            raise FileNotFoundError(msg)
+
     if only_update:
         if not missing_or_other_newer(dst, src):
             return
+
     shutil.copy(src, dst)
     if copystat:
         shutil.copystat(src, dst)
@@ -134,9 +142,9 @@ def run_sub_setup(cb, destdir, **kwargs):
     os.chdir(ori_dir)
 
 
-def render_mako_template_to(template, outpath, subsd,
-                            only_update=False, cwd=None,
-                            prev_subsd=None):
+def render_mako_template_to(
+        template, outpath, subsd, only_update=False, cwd=None,
+        prev_subsd=None, create_dest_dirs=False):
     """
     template: either string of path or file like obj.
 
@@ -146,6 +154,14 @@ def render_mako_template_to(template, outpath, subsd,
     if cwd:
         template = os.path.join(cwd, template)
         outpath = os.path.join(cwd, outpath)
+    outdir = os.path.dirname(outpath)
+
+    if not os.path.exists(outdir):
+        if create_dest_dirs:
+            make_dirs(outdir)
+        else:
+            raise FileNotFoundError(
+                "Dest. dir. non-existent: {}".format(outdir))
 
     if only_update:
         if prev_subsd == subsd and \

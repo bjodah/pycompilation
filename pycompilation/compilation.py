@@ -7,7 +7,8 @@ import re
 
 from .util import HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath, expand_collection_in_dict
 from ._helpers import (
-    find_binary_of_command, uniquify, assure_dir, CompilationError, FileNotFoundError
+    find_binary_of_command, uniquify, assure_dir,
+    CompilationError, FileNotFoundError, pyx_is_cplus
 )
 
 if os.name == 'posix': # Future improvement to make cross-platform
@@ -495,7 +496,9 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
 
 
 def compile_sources(files, CompilerRunner_=None,
-                    destdir=None, cwd=None, **kwargs):
+                    destdir=None, cwd=None,
+                    keep_dir_struct=False,
+                    **kwargs):
     """
     Distutils does not allow to use object files in compilation
     (see http://bugs.python.org/issue5372)
@@ -519,7 +522,10 @@ def compile_sources(files, CompilerRunner_=None,
     #destdir = get_abspath(destdir, cwd=cwd)
     dstpaths = []
     for f in files:
-        name, ext = os.path.splitext(os.path.basename(f))
+        if keep_dir_struct:
+            name, ext = os.path.splitext(f)
+        else:
+            name, ext = os.path.splitext(os.path.basename(f))
         dstpaths.append(src2obj(f, CompilerRunner_,
                                 destdir, cwd=cwd, **kwargs))
     return dstpaths
@@ -703,7 +709,7 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
 def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
             logger=None, full_module_name=None, only_update=False,
             metadir=None, include_numpy=False, inc_dirs=None,
-            cy_kwargs=None, gdb=False, cplus=False, **kwargs):
+            cy_kwargs=None, gdb=False, cplus=None, **kwargs):
     """
     Convenience function
 
@@ -728,6 +734,8 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
 
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
+    if cplus == None:
+        cplus = pyx_is_cplus(pyxpath)
     cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
