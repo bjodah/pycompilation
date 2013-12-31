@@ -256,11 +256,15 @@ def MetaReaderWriter(filename):
     return ReaderWriter()
 
 
-def import_(filename):
+def import_(filename, only_if_newer_than=None):
     """
     Imports (cython generated) shared object file (.so)
 
-    Warning, Python's caching or the OS caching (unclear to author)
+    Provide a list of paths in `only_if_newer_than` to check
+    timestamps of dependencies. import_ raises an ImportError
+    if any is newer.
+
+    Word of warning: Python's caching or the OS caching (unclear to author)
     is horrible for reimporting same path of an .so file. It will
     not detect the new time stamp nor new checksum but will use old
     module.
@@ -271,6 +275,10 @@ def import_(filename):
     path, name = os.path.split(filename)
     name, ext = os.path.splitext(name)
     fobj, filename, data = imp.find_module(name, [path])
+    if only_if_newer_than:
+        for dep in only_if_newer_than:
+            if os.path.getmtime(filename) < os.path.getmtime(dep):
+                raise ImportError("{} is newer than {}".format(dep, filename))
     mod = imp.load_module(name, fobj, filename, data)
     return mod
 
