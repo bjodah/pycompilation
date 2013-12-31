@@ -23,10 +23,9 @@ import shutil
 import re
 import os
 
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from functools import reduce, partial
 from operator import add
-
 
 # External imports
 import sympy
@@ -41,21 +40,22 @@ from .compilation import (
 from .helpers import defaultnamedtuple
 
 
-Loop = defaultnamedtuple('Loop', ('counter', 'bounds_idx', 'body'), ())
+Loop = namedtuple('Loop', ('counter', 'bounds_idx', 'body'))
 
-# DummyGroup:s are used in transformation from sympy expression into code
-# It is used to protect symbols from being operated upon.
-DummyGroup = defaultnamedtuple('DummyGroup', 'basename symbols')
+# DummyGroup instances are used in transformation from sympy expression
+# into code. It is used to protect symbols from being operated upon.
+DummyGroup = namedtuple('DummyGroup', 'basename symbols')
 
-# ArrayifyGroup:s defines what expressions should be arrayified
-# and what
+# ArrayifyGroup instances defines what expressions should be
+# arrayified and what offset should be used
 ArrayifyGroup = defaultnamedtuple(
     'ArrayifyGroup', 'basename code_tok offset dim', [None, 0])
 
 
 def _dummify_expr(expr, basename, symbs):
     """
-    Useful to robustify prior to e.g. regexp substitution of code strings
+    Useful to robustify prior to e.g. regexp substitution of
+    code strings
     """
     dummies = sympy.symbols(basename+':'+str(len(symbs)))
     for i, s in enumerate(symbs):
@@ -74,10 +74,12 @@ def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0,
     -`token`: name of (array) variable in code
 
     Examples:
-    >>> syntaxify_getitem('C', 'y_i = x_i+i;', 'y', 'yout', offset='CONST', match_regex=r'_(\w)')
+    >>> syntaxify_getitem('C', 'y_i = x_i+i;', 'y', 'yout',
+            offset='CONST', match_regex=r'_(\w)')
     'yout[i+CONST] = x_i+i;'
 
-    >>> syntaxify_getitem('F', 'y7 = x7+i;', 'y', 'yout', offset=-3, dim=-1)
+    >>> syntaxify_getitem('F', 'y7 = x7+i;', 'y', 'yout',
+            offset=-3, dim=-1)
     'yout(7-3,:) = x_7+i;'
     """
     if syntax == 'C': assert dim == 0 # C does not support broadcasting
@@ -97,6 +99,30 @@ def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0,
     return re.sub(basename+match_regex, tgt, scode)
 
 
+class Interceptor(object):
+    """
+    This is a wrapper for dynamically loaded extension modules
+    which share the same same (they end of overwriting the same
+    python object).
+    """
+
+    def __init__(self, binary_path):
+        self._binary_path = binary_path
+        self._binary_mod = import_(self._binary_path)
+
+    def __getattr__(self, key):
+        if key == '__file__':
+            return self._binary_mod.__file__
+
+        if self._binary_mod.__file__ != self._binary_path:
+            # Avoid singleton behaviour. (Python changes binary path
+            # inplace without changing id of Python object)
+            self._binary_mod = import_(self._binary_path)
+        if self._binary_mod.__file__ != self._binary_path:
+            raise RuntimeError
+        return getattr(self._binary_mod, key)
+
+
 class Generic_Code(object):
     """
 
@@ -107,13 +133,14 @@ class Generic_Code(object):
     Attributes to optionally override:
     -`syntax`: any of the supported syntaxes ('C' or 'F')
     -`tempdir_basename`: basename of tempdirs created in e.g. /tmp/
-    -`_basedir` the path to the directory which relative (source) paths are given to
+    -`_basedir` the path to the directory which relative (source)
+    paths are given to
     """
 
-    CompilerRunner = None # Set to a subclass of compilation.CompilerRunner
+    CompilerRunner = None # Set to compilation.CompilerRunner subclass
 
     syntax = None
-    fort = False # form of fortran code? (decisive for linking)
+    fort = False # a form of fortran code? (decisive for linking)
     #preferred_vendor = 'gnu'
     tempdir_basename = 'generic_code'
     _basedir = None
@@ -204,7 +231,8 @@ class Generic_Code(object):
         for basename, symbols in dummy_groups:
             expr = _dummify_expr(expr, basename, symbols)
 
-        scode = self.wcode(expr) # sympy.ccode or sympy.fcode(..., source_format='free')
+        # wcode: sympy.ccode or sympy.fcode(..., source_format='free')
+        scode = self.wcode(expr)
 
         for basename, code_tok, offset, dim in arrayify_groups:
             scode = syntaxify_getitem(
@@ -257,8 +285,23 @@ class Generic_Code(object):
             self._written_files.append(outpath)
 
     def compile_and_import_binary(self):
+        """
+        Returnes a module instance of the extension module.
+
+        Use:
+        >>> mod = codeinstnc.compile_and_import_binary()
+        >>> x = mod.cb('foo')
+
+        Don't:
+        >>> cb = codeinstnc.compile_and_import_binary().cb
+
+        Since that circumvents measurments avoiding singleton
+        behaviour when multiple different versions of the same
+        extension module have been compiled. (the shared object
+        has the same name and identifier)
+        """
         self._compile()
-        return import_(self.binary_path)
+        return Interceptor(self.binary_path)
 
 
     @property
@@ -289,7 +332,8 @@ class Generic_Code(object):
 
     def _compile_obj(self, sources=None):
         sources = sources or self.source_files
-        compile_sources(sources, self.CompilerRunner, cwd=self._tempdir,
+        compile_sources(sources, self.CompilerRunner,
+                        cwd=self._tempdir,
                         inc_dirs=self.inc_dirs,
                         defmacros=self.defmacros,
                         logger=self.logger,
@@ -326,8 +370,8 @@ class Cython_Code(Generic_Code):
                 '_template', '')) for x \
             in self.source_files]
         setup(
-            script_name =  'DUMMY_SCRIPT_NAME',
-            script_args =  ['build_ext',  '--build-lib', self._tempdir],
+            script_name = 'DUMMY_SCRIPT_NAME',
+            script_args = ['build_ext',  '--build-lib', self._tempdir],
             include_dirs = self._include_dirs,
             cmdclass = {'build_ext': build_ext},
             ext_modules = [
@@ -372,7 +416,7 @@ class F90_Code(Generic_Code):
     def __init__(self, *args, **kwargs):
         self._cached_files = self._cached_files or []
         # self._cached_files += [
-        #   x+'.mod' for x in self._get_module_files(self.source_files)]
+        #  x+'.mod' for x in self._get_module_files(self.source_files)]
         self._cached_files += [
             x+'.mod' for x in self._get_module_files(self.templates)]
         super(F90_Code, self).__init__(*args, **kwargs)

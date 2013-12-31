@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from collections import defaultdict
+
+import numpy as np
 import sympy
 
-from pycompilation.codeexport import C_Code
+from pycompilation.codeexport import C_Code, Loop
 
 def get_statements(eq, taken=None):
     """
     Returns a list of Eq objects were lhs is variable to make
     assignment to and rhs is expr to be evaluated.
 
-    Unwinds Sum() and Product() objects into loops
+    Transforms Sum() and Product() objects into Loop instances
     """
     stmnts = []
     # maybe make taken to be a set
@@ -56,51 +59,48 @@ def get_idxs(exprs):
     Finds sympy.tensor.indexed.Idx instances and returns them.
     """
     idxs = set()
-    def add_if_Idx(candidate):
-        if isinstance(candidate, sympy.Idx):
-            idxs.add(candidate)
     for expr in (exprs):
-        assert len(expr.lhs) == 1
-        add_if_Idx(expr.lhs)
-        for atom in expr.rhs.atoms():
-            idxs.union(add_if_Idx(atom))
-    return sorted(idxs)
+        for i in expr.find(sympy.Idx):
+            idxs.add(i)
+    return sorted(idxs, cmp=lambda x,y: str(x)<str(y))
 
-
-def mk_recursive_loop(idxs, body):
-    if len(idxs) > 0:
-        return body
-    else:
-        idx = idxs[0]
-        return Loop(idx.name,
-                    self._idxs.index(idx), # sorry
-                    mk_recursive_loop(idxs[1:], body)
-        )
 
 
 class ExampleCode(C_Code):
 
     templates = ['codeexport_loops_template.c']
-    copy_files = ['codeexport_loops_wrapper.o']
+    source_files = ['codeexport_loops_wrapper.pyx']
 
 
     def __init__(self, exprs, inputs, indices, **kwargs):
         self.exprs = exprs
         self.inputs = inputs
         self.indices = indices
-        assert get_idxs(exprs) == sorted(indices) # sanity check
+        assert get_idxs(exprs) == sorted(
+            indices, cmp=lambda x,y: str(x)<str(y)) # sanity check
 
-        # list of lists ox indices present in each expr
+        # list of lists of indices present in each expr
         self._exprs_idxs = [tuple(
-            [i for i in self.indices if i in expr.lhs.atoms()]) \
+            [i for i in self.indices if expr.lhs.find(i)]) \
             for expr in self.exprs]
 
         # Group expressions using same set of indices
-        self._expr_by_idx = DefaultDict(list)
-        for idxs, expr in zip(self._exprs_idxs, self._exprs):
+        self._expr_by_idx = defaultdict(list)
+        for idxs, expr in zip(self._exprs_idxs, self.exprs):
             self._expr_by_idx[idxs].append(expr)
+
         super(ExampleCode, self).__init__(**kwargs)
 
+    def _mk_recursive_loop(self, idxs, body):
+        if len(idxs) == 0:
+            return body
+        else:
+            idx = idxs[0]
+            return Loop(
+                idx.name,
+                self.indices.index(idx), # sorry
+                mk_recursive_loop(idxs[1:], body)
+            )
 
     @property
     def variables(self):
@@ -109,14 +109,18 @@ class ExampleCode(C_Code):
             # dummy_groups = (
             #     DummyGroup('argdummies', self._)
             # )
-            code = self.as_arrayified_code(self._expr_by_idx[idxs])
-            expr_groups.append(mk_recursive_loop(idxs, expr_code))
+            expr_code = []
+            for expr in self._expr_by_idx[idxs]:
+                expr_code.append(self.as_arrayified_code(expr))
+            expr_groups.append(self._mk_recursive_loop(
+                idxs, expr_code.join('\n')))
         return {'expr_groups': expr_groups}
 
 
 def model1(inps, lims):
     """
     x[i] = (a[i]/3-1)**i + c
+    y[j] = a[j] - j
     """
     a_arr, c_ = inps
     ilim, jlim = lims
@@ -134,20 +138,21 @@ def model1(inps, lims):
     c = sympy.Symbol('c', real=True)
 
     x = sympy.IndexedBase('x', shape=(a_size,))
-
+    y = sympy.IndexedBase('y', shape=(a_size,))
 
     exprs = [
-        Eq(x[i], (a[i]/3-1)**i+c),
-        Eq(y[j], a[j]-j),
+        sympy.Eq(x[i], (a[i]/3-1)**i+c),
+        sympy.Eq(y[j], a[j]-j),
     ]
 
     ex_code = ExampleCode(exprs, (a[i],c), (i, j))
     mod = ex_code.compile_and_import_binary()
 
-
     x_, y_ = mod.my_callback(inps, bounds=(i_bounds, j_bounds))
-    assert np.allclose(x_, (a_arr/3-1)**np.arange(ilim[0], ilim[1]+1) - c_)
-    assert np.allclose(y_, a_arr-np.arange(jlim[0],jlim[1]+1))
+    assert np.allclose(
+        x_, (a_arr/3-1)**np.arange(ilim[0], ilim[1]+1) - c_)
+    assert np.allclose(
+        y_, a_arr-np.arange(jlim[0],jlim[1]+1))
 
 
 def model2():

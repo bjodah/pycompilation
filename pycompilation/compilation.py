@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+
+"""
+Distutils does not allow to use object files in compilation
+(see http://bugs.python.org/issue5372)
+hence the compilation of source files cannot be cached
+unless doing something like what compile_sources / src2obj do.
+"""
+
 from __future__ import print_function, division
 
 import os
@@ -240,7 +249,6 @@ class CompilerRunner(object):
         return name, path, cls.compiler_name_vendor_mapping[name]
 
 
-    @property
     def cmd(self):
         """
         The command below covers most cases, if you need
@@ -284,14 +292,14 @@ class CompilerRunner(object):
 
         # Logging
         if self.logger: self.logger.info(
-                'Executing: "{0}"'.format(' '.join(self.cmd)))
+                'Executing: "{0}"'.format(' '.join(self.cmd())))
 
         env = os.environ.copy()
         env['PWD'] = self.cwd
 
-        # NOTE: the ' '.join(self.cmd) part seems to be necessary for
+        # NOTE: the ' '.join(self.cmd()) part seems to be necessary for
         # intel compilers
-        p = subprocess.Popen(' '.join(self.cmd),
+        p = subprocess.Popen(' '.join(self.cmd()),
                              shell=True,
                              cwd=self.cwd,
                              stdin= subprocess.PIPE,
@@ -308,7 +316,7 @@ class CompilerRunner(object):
                 ("Error executing '{0}' in {1}. "+\
                  "Command exited with status {2}"+\
                  " after givning the following output: {3}").format(
-                     ' '.join(self.cmd), self.cwd, self.cmd_returncode,
+                     ' '.join(self.cmd()), self.cwd, self.cmd_returncode,
                      str(self.cmd_outerr)))
 
         if self.logger and self.cmd_outerr: self.logger.info(
@@ -498,13 +506,9 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
 def compile_sources(files, CompilerRunner_=None,
                     destdir=None, cwd=None,
                     keep_dir_struct=False,
+                    options_per_file=None,
                     **kwargs):
     """
-    Distutils does not allow to use object files in compilation
-    (see http://bugs.python.org/issue5372)
-    hence the compilation of source files cannot be cached
-    unless doing something like what compile_sources does.
-
     Arguments:
     -`files`: list of paths to source files, if cwd is given, the
         paths are taken as relative
@@ -514,19 +518,24 @@ def compile_sources(files, CompilerRunner_=None,
         taken as relative
     -`cwd`: current working directory. Specify to have compiler run in
         other directory.
-    -`only_update`: True (default) implies only to compile sources
-        newer than their object files.
+    -`keep_dir_struct`: keep dir strucutre in destdir
+    -`options_per_file`: dict mapping instances in `files` to `options`
+        keyword arguemtns
     -`**kwargs`: keyword arguments pass along to CompilerRunner_
     """
     destdir = destdir or '.'
+    options_per_file = options_per_file or {}
     #destdir = get_abspath(destdir, cwd=cwd)
     dstpaths = []
+    fallback_options = kwargs.pop('options', default_compile_options)
     for f in files:
         if keep_dir_struct:
             name, ext = os.path.splitext(f)
         else:
             name, ext = os.path.splitext(os.path.basename(f))
-        dstpaths.append(src2obj(f, CompilerRunner_, cwd=cwd, **kwargs))
+        dstpaths.append(src2obj(
+            f, CompilerRunner_, cwd=cwd,
+            options=options_per_file.get(f, fallback_options), **kwargs))
     return dstpaths
 
 
@@ -670,6 +679,7 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
             objpath = '.'
         else:
             objpath = os.path.dirname(srcpath)
+            objpath = objpath or '.' # avoid objpath == ''
     out_ext = out_ext or objext
     if os.path.isdir(objpath):
         objpath = os.path.join(objpath, name+out_ext)

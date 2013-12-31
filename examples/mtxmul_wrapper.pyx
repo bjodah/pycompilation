@@ -11,13 +11,14 @@ def mtxmul(A, B):
     cdef int m = A.shape[0]
     cdef int n = A.shape[1]
     cdef int o = B.shape[1]
-    cdef cnp.ndarray[cnp.float64_t, ndim=2, mode='fortran'] Out = np.empty((m, o), order='F')
+    cdef cnp.ndarray[cnp.float64_t, ndim=2, mode='fortran'] Out =\
+        np.empty((m, o), order='F')
 
     assert A.shape[1] == B.shape[0]
 
     do_mtxmul(&m, &n, &o,
-          &A_fort[0,0], #.data,
-          &B_fort[0,0], #<double*>
+          &A_fort[0,0],
+          &B_fort[0,0],
           &Out[0,0])
 
     return Out
