@@ -7,30 +7,17 @@ import logging
 
 import numpy as np
 
-from pycompilation import (
-    compile_sources, pyx2obj, link_py_so,
-    FortranCompilerRunner, import_
-)
+from pycompilation.dist import compile_link_import_py_ext
+from pycompilation.util import term_fmt
 
-from pycompilation.util import term_fmt, copy
-
-examples_dir =  os.path.abspath(os.path.dirname(__file__))
-files = ['mtxmul.f90', 'mtxmul_wrapper.pyx']
-options=['pic', 'warn', 'fast']
-
-def run_compilation(**kwargs):
-    for f in files:
-        copy(os.path.join(examples_dir, f), kwargs.get('cwd', None))
-    objs = compile_sources(files, options=options, **kwargs)
-    return link_py_so(objs, fort=True, **kwargs)
+source_files = ['mtxmul.f90', 'mtxmul_wrapper.pyx']
 
 def main(logger=None, clean=False):
     """
     Example program showing how to wrap fortran code using Cython
     """
     build_dir = tempfile.mkdtemp('mtxmul')
-    so_file_path = run_compilation(cwd=build_dir, logger=logger)
-    mod = import_(so_file_path)
+    mod = compile_link_import_py_ext(source_files, build_dir=build_dir)
 
     A = np.random.random((7,9))
     B = np.random.random((9,13))

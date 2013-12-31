@@ -14,7 +14,10 @@ import subprocess
 import shutil
 import re
 
-from .util import HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath, expand_collection_in_dict
+from .util import (
+    HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
+    expand_collection_in_dict, make_dirs, copy
+)
 from ._helpers import (
     find_binary_of_command, uniquify, assure_dir,
     CompilationError, FileNotFoundError, pyx_is_cplus
@@ -292,7 +295,7 @@ class CompilerRunner(object):
 
         # Logging
         if self.logger: self.logger.info(
-                'Executing: "{0}"'.format(' '.join(self.cmd())))
+                'In "{0}", executing:\n"{1}"'.format(self.cwd, ' '.join(self.cmd())))
 
         env = os.environ.copy()
         env['PWD'] = self.cwd
@@ -523,18 +526,29 @@ def compile_sources(files, CompilerRunner_=None,
         keyword arguemtns
     -`**kwargs`: keyword arguments pass along to CompilerRunner_
     """
-    destdir = destdir or '.'
     options_per_file = options_per_file or {}
-    #destdir = get_abspath(destdir, cwd=cwd)
-    dstpaths = []
     fallback_options = kwargs.pop('options', default_compile_options)
+
+    # Set up destination directory
+    destdir = destdir or '.'
+    if not os.path.isdir(destdir):
+        if os.path.exists(destdir):
+            raise IOError("{} is not a directory".format(destdir))
+        else:
+            make_dirs(destdir)
+    if cwd == None:
+        cwd = destdir
+        for f in files:
+            copy(f, destdir, only_update=True, dest_is_dir=True)
+
+    # Compile files and return list of paths to the objects
+    dstpaths = []
     for f in files:
         if keep_dir_struct:
             name, ext = os.path.splitext(f)
         else:
             name, ext = os.path.splitext(os.path.basename(f))
-        dstpaths.append(src2obj(
-            f, CompilerRunner_, cwd=cwd,
+        dstpaths.append(src2obj(f, CompilerRunner_, cwd=cwd,
             options=options_per_file.get(f, fallback_options), **kwargs))
     return dstpaths
 
@@ -739,16 +753,17 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     interm_c_dir = interm_c_dir or os.path.dirname(objpath)
 
     abs_objpath = get_abspath(objpath, cwd=cwd)
+    abs_pyxpath = get_abspath(pyxpath, cwd=cwd)
 
     if os.path.isdir(abs_objpath):
-        pyx_fname = os.path.basename(pyxpath)
+        pyx_fname = os.path.basename(abs_pyxpath)
         name, ext = os.path.splitext(pyx_fname)
         objpath = os.path.join(objpath, name+objext)
 
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
     if cplus == None:
-        cplus = pyx_is_cplus(pyxpath)
+        cplus = pyx_is_cplus(abs_pyxpath)
     cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
@@ -756,7 +771,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         cy_kwargs['include_path'] = inc_dirs
 
     interm_c_file = simple_cythonize(
-        pyxpath, dstdir=interm_c_dir,
+        abs_pyxpath, dstdir=interm_c_dir,
         cwd=cwd, logger=logger,
         full_module_name=full_module_name,
         only_update=only_update, **cy_kwargs)

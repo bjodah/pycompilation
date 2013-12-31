@@ -11,7 +11,7 @@ from distutils.command import build_ext
 from distutils.extension import Extension
 
 from .compilation import extension_mapping, default_compile_options, FortranCompilerRunner, CppCompilerRunner, compile_sources, link_py_so
-from .util import copy, get_abspath, render_mako_template_to
+from .util import copy, get_abspath, render_mako_template_to, import_
 
 def is_fortran_file(src):
     name, ext = os.path.splitext(src)
@@ -93,16 +93,38 @@ class clever_build_ext(build_ext.build_ext):
             src_objs = compile_sources(
                 sources,
                 options=ext.options or default_compile_options,
-                options_per_file=ext.options_per_file or None
+                options_per_file=ext.options_per_file or None,
                 cwd=self.build_temp,
                 inc_dirs=map(get_abspath, ext.include_dirs)
             )
-            link_options = []
+            #link_options = []
             abs_so_path = link_py_so(
                 src_objs, cwd=self.build_temp,
                 fort=any_fort(sources),
                 cplus=any_cplus(sources),
-                options=link_options,
+                options=ext.options or default_compile_options #link_options,
             )
             copy(abs_so_path, self.get_ext_fullpath(
                 ext.name))
+
+
+def compile_link_import_py_ext(srcs, extname=None, build_dir=None):
+    """
+    This method is useful for e.g. rapid prototyping.
+    """
+    build_dir = build_dir or '.'
+    if extname == None:
+        # Assume single pyx file (Cython extension)
+        pyx = filter(lambda x: x.endswith('.pyx'), srcs)
+        assert len(pyx) == 1
+        extname = pyx[0].split('.pyx')[0]
+
+    try:
+        mod = import_(os.path.join(build_dir, extname), srcs)
+    except ImportError:
+        objs = compile_sources(srcs, destdir=build_dir)
+        so = link_py_so(objs, cwd=build_dir,
+                        fort=any_fort(srcs), cplus=any_cplus(srcs))
+        mod = import_(so)
+
+    return mod
