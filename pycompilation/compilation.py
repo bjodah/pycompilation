@@ -35,8 +35,6 @@ else:
     raise ImportError("Unknown os.name: {}".format(os.name))
 
 
-default_compile_options = ('warn', 'pic', 'fast')
-
 
 def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
                             cwd=None):
@@ -88,6 +86,8 @@ class CompilerRunner(object):
 
     logger = None
 
+    default_compile_options = ('pic', 'warn', 'fast')
+
     # http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
     # MKL 11.1 x86-64, *nix, MKLROOT env. set, dynamic linking
     # This is _really_ ugly and not portable in any manner.
@@ -127,8 +127,8 @@ class CompilerRunner(object):
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
                  lib_dirs=None, std=None, options=None, defmacros=None,
-                 logger=None, preferred_vendor=None, metadir=None,
-                 lib_options=None, only_update=False):
+                 undefmacros=None,logger=None, preferred_vendor=None,
+                 metadir=None, lib_options=None, only_update=False):
         """
         Arguments:
         - `preferred_vendor`: key of compiler_dict
@@ -162,19 +162,21 @@ class CompilerRunner(object):
                     "No compiler found (searched: {0})".format(
                         ', '.join(self.compiler_dict.values())))
         self.defmacros = defmacros or []
+        self.undefmacros = undefmacros or []
         self.inc_dirs = inc_dirs or []
         self.libs = libs or []
         self.lib_dirs = lib_dirs or []
-        self.options = options or []
+        self.options = options or self.default_compile_options
         self.std = std or self.standards[0]
         self.lib_options = lib_options or []
         self.logger = logger
         self.only_update = only_update
         if run_linker:
-            # both gcc and ifort have '-c' flag for disabling linker
+            # both gnu and intel compilers use '-c' for disabling linker
             self.flags = filter(lambda x: x != '-c', self.flags)
         else:
-            self.flags.append('-c')
+            if not '-c' in self.flags:
+                self.flags.append('-c')
 
         if self.std:
             self.flags.append(self.std_formater[
@@ -182,6 +184,7 @@ class CompilerRunner(object):
 
         self.linkline = []
 
+        # Handle options
         for opt in self.options:
             self.flags.extend(self.option_flag_dict.get(
                 self.compiler_name, {}).get(opt,[]))
@@ -192,12 +195,9 @@ class CompilerRunner(object):
                     self.vendor_options_dict.get(
                         self.compiler_vendor, {}).get(
                             opt, {}).get(k, []))
-            extend(self.flags, 'flags')
-            extend(self.defmacros, 'defmacors')
-            extend(self.inc_dirs, 'inc_dirs')
-            extend(self.lib_dirs, 'lib_dirs')
-            extend(self.libs, 'libs')
-            extend(self.linkline, 'linkline')
+            for kw in ('flags', 'defmacros', 'undefmacros',
+                       'inc_dirs', 'lib_dirs', 'libs', 'linkline'):
+                extend(getattr(self, kw), kw)
 
         # libs
         for lib_opt in self.lib_options:
@@ -255,10 +255,11 @@ class CompilerRunner(object):
     def cmd(self):
         """
         The command below covers most cases, if you need
-        someting more complex subclass property(cmd)
+        someting more complex subclass this.
         """
         cmd = [self.compiler_binary] +\
               self.flags + \
+              ['-U'+x for x in self.undefmacros] +\
               ['-D'+x for x in self.defmacros] +\
               ['-I'+x for x in self.inc_dirs] +\
               self.sources + \
@@ -509,7 +510,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
 def compile_sources(files, CompilerRunner_=None,
                     destdir=None, cwd=None,
                     keep_dir_struct=False,
-                    options_per_file=None,
+                    per_file_kwargs=None,
                     **kwargs):
     """
     Arguments:
@@ -522,12 +523,11 @@ def compile_sources(files, CompilerRunner_=None,
     -`cwd`: current working directory. Specify to have compiler run in
         other directory.
     -`keep_dir_struct`: keep dir strucutre in destdir
-    -`options_per_file`: dict mapping instances in `files` to `options`
+    -`per_file_kwargs`: dict mapping instances in `files` to
         keyword arguemtns
-    -`**kwargs`: keyword arguments pass along to CompilerRunner_
+    -`**kwargs`: default keyword arguments to pass to CompilerRunner_
     """
-    options_per_file = options_per_file or {}
-    fallback_options = kwargs.pop('options', default_compile_options)
+    per_file_kwargs = per_file_kwargs or {}
 
     # Set up destination directory
     destdir = destdir or '.'
@@ -548,8 +548,12 @@ def compile_sources(files, CompilerRunner_=None,
             name, ext = os.path.splitext(f)
         else:
             name, ext = os.path.splitext(os.path.basename(f))
-        dstpaths.append(src2obj(f, CompilerRunner_, cwd=cwd,
-            options=options_per_file.get(f, fallback_options), **kwargs))
+        file_kwargs = kwargs.copy()
+        file_kwargs.update(per_file_kwargs.get(f, {}))
+        dstpaths.append(src2obj(
+            f, CompilerRunner_, cwd=cwd,
+            **file_kwargs
+        ))
     return dstpaths
 
 

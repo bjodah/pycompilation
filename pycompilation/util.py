@@ -301,3 +301,28 @@ def download_files(websrc, files, md5sums, cwd=None,
                 ("Warning: MD5 sum of {0} differs from that provided"+\
                  " in setup.py. i.e. {1} vs. {2}").format(
                      f, fmd5, md5sums[f]))
+
+# def callback_on_regexp_path(path, regexp_tuples, default):
+#     dirname = os.path.dirname(path)
+#     filename = os.path.basename(path)
+#     for pattern, target, cb, args, kwargs in regexp_tuples:
+#         if re.match(pattern, filename):
+#             tgt = os.path.join(dirname, re.sub(
+#                     pattern, target, filename))
+#             cb(get_abspath(path),
+#                *args,
+#                **kwargs,
+#                os.path.join(self.build_temp, tgt),
+#                subsd,
+#                only_update=True,
+#                create_dest_dirs=True)
+#             sources.append(tgt)
+#             print(tgt)
+#             break
+#     else:
+#         copy(f,
+#              os.path.join(self.build_temp,
+#                           os.path.dirname(f)),
+#              dest_is_dir=True,
+#              create_dest_dirs=True)
+#         sources.append(f)
