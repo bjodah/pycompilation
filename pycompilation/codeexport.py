@@ -264,7 +264,7 @@ class Generic_Code(object):
 
     def write_code(self):
         for path in self._cached_files:
-            # Make sure we start with a clean slate
+            # Make sure we start in a clean state
             rel_path = os.path.join(self._tempdir, path)
             if os.path.exists(rel_path):
                 os.unlink(rel_path)
