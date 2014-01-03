@@ -67,6 +67,7 @@ def CleverExtension(*args, **kwargs):
         'pycompilation_compile_kwargs', {})
     instance.pycompilation_link_kwargs = kwargs.pop(
         'pycompilation_link_kwargs', {})
+    instance.copy_files = kwargs.pop('copy_files', ())
     return instance
 
 
@@ -102,6 +103,12 @@ class clever_build_ext(build_ext.build_ext):
                          dest_is_dir=True,
                          create_dest_dirs=True)
                     sources.append(f)
+
+            for f in ext.copy_files:
+                copy(f, os.path.join(self.build_temp,
+                                     os.path.dirname(f)),
+                     dest_is_dir=True,
+                     create_dest_dirs=True)
 
             if ext._pass_extra_compile_args:
                 # By default we do not pass extra_compile_kwargs

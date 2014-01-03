@@ -48,6 +48,7 @@ DummyGroup = namedtuple('DummyGroup', 'basename symbols')
 
 # ArrayifyGroup instances defines what expressions should be
 # arrayified and what offset should be used
+# arg `dim` is for broadcasting (Fortran)
 ArrayifyGroup = defaultnamedtuple(
     'ArrayifyGroup', 'basename code_tok offset dim', [None, 0])
 
