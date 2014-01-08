@@ -18,7 +18,7 @@
 </%def>
 
 // func takes arbitrary (<~ 2e9) number of ints and doubles as input (inpd/inpi)
-// and populates arbitrary number of ints and doubles in outd/outi
+// and populates arbitrary number of doubles and ints in outd/outi
 // returns 0 on successful exit;
 int _arbitrary_func(const int * const restrict bounds,
 		    const double * const restrict inpd,

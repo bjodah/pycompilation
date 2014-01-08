@@ -72,8 +72,9 @@ class ExampleCode(C_Code):
     source_files = ['codeexport_loops_wrapper.pyx']
 
 
-    def __init__(self, exprs, inputs, indices, **kwargs):
-        self.exprs = exprs
+    def __init__(self, eqs, inputs, indices, **kwargs):
+        self.unk = [x.lhs for x in eqs]
+        self.exprs = [x.rhs for x in eqs]
         self.inputs = inputs
         self.indices = indices
         assert get_idxs(exprs) == sorted(
@@ -116,6 +117,17 @@ class ExampleCode(C_Code):
                 idxs, expr_code.join('\n')))
         return {'expr_groups': expr_groups}
 
+    _mod = None
+    @property
+    def mod(self):
+        if self._mod == None:
+            self._mod = self.compile_and_import_binary()
+        return self._mod
+
+    def __call__(self, inp, bounds=None, inpi=None):
+        inpd = np.ascontiguousarray(np.concatenate([[x] if isinstance(x, float) else x for x in inp))
+        noutd =
+        x_, y_ = self.mod.arbitrary_func(bounds, inpd, inpi, noutd, nouti)
 
 def model1(inps, lims):
     """
@@ -140,15 +152,13 @@ def model1(inps, lims):
     x = sympy.IndexedBase('x', shape=(a_size,))
     y = sympy.IndexedBase('y', shape=(a_size,))
 
-    exprs = [
+    eqs = [
         sympy.Eq(x[i], (a[i]/3-1)**i+c),
         sympy.Eq(y[j], a[j]-j),
     ]
 
-    ex_code = ExampleCode(exprs, (a[i],c), (i, j))
-    mod = ex_code.compile_and_import_binary()
-
-    x_, y_ = mod.my_callback(inps, bounds=(i_bounds, j_bounds))
+    ex_code = ExampleCode(eqs, (a[i], c), (i, j))
+    x_, y_ = ex_code(inps, bounds=(i_bounds, j_bounds))
     assert np.allclose(
         x_, (a_arr/3-1)**np.arange(ilim[0], ilim[1]+1) - c_)
     assert np.allclose(
