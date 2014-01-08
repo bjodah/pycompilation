@@ -648,9 +648,12 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
 
     if only_update:
         if not missing_or_other_newer(dstfile, src, cwd=cwd):
-            logger.info(
-                '{0} newer than {1}, did not re-cythonize.'.format(
-                dstfile, src))
+            msg = '{0} newer than {1}, did not re-cythonize.'.format(
+                dstfile, src)
+            if logger:
+                logger.info(msg)
+            else:
+                print(msg)
             return dstfile
 
     if cwd:
@@ -722,7 +725,7 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
     if only_update:
         if not missing_or_other_newer(objpath, srcpath, cwd=cwd):
             msg = "Found {0}, did not recompile.".format(objpath)
-            if 'logger' in kwargs:
+            if kwargs.get('logger', None):
                 kwargs['logger'].info(msg)
             else:
                 print(msg)

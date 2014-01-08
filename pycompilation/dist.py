@@ -59,15 +59,23 @@ def CleverExtension(*args, **kwargs):
     -`pass_extra_compile_args`: True/False, default: False, should ext.extra_compile_args be
         passed along?
     """
+    intercept = {
+        'build_callbacks': (), # tuple of (callback, args, kwargs)
+        'link_ext': True,
+        'copy_files': (),
+        'dist_files': (), # work around stackoverflow.com/questions/2994396/
+        'template_regexps': [],
+        'pass_extra_compile_args': False, # use distutils extra_compile_args?
+        'pycompilation_compile_kwargs': {},
+        'pycompilation_link_kwargs': {},
+    }
+    vals = {}
+    for k, v in intercept.items():
+        vals[k] = kwargs.pop(k, v)
     instance = Extension(*args, **kwargs)
-    instance.template_regexps = kwargs.pop('template_regexps', [])
-    # use distutils extra_compile_args?
-    instance._pass_extra_compile_args = kwargs.pop('pass_extra_compile_args', False)
-    instance.pycompilation_compile_kwargs = kwargs.pop(
-        'pycompilation_compile_kwargs', {})
-    instance.pycompilation_link_kwargs = kwargs.pop(
-        'pycompilation_link_kwargs', {})
-    instance.copy_files = kwargs.pop('copy_files', ())
+    for k, v in vals.items():
+        setattr(instance, k, v)
+
     return instance
 
 
@@ -109,8 +117,19 @@ class clever_build_ext(build_ext.build_ext):
                                      os.path.dirname(f)),
                      dest_is_dir=True,
                      create_dest_dirs=True)
+            for f, rel_dst in ext.dist_files:
+                rel_dst = rel_dst or os.path.basename(f)
+                copy(
+                    f,
+                    os.path.join(
+                        os.path.dirname(self.get_ext_fullpath(ext.name)),
+                        rel_dst
+                    ),
+                    #dest_is_dir=True,
+                    #create_dest_dirs=True
+                )
 
-            if ext._pass_extra_compile_args:
+            if ext.pass_extra_compile_args:
                 # By default we do not pass extra_compile_kwargs
                 # since it contains '-fno-strict-aliasing' which
                 # harms performance.
@@ -128,17 +147,22 @@ class clever_build_ext(build_ext.build_ext):
                 **ext.pycompilation_compile_kwargs
             )
 
+            for cb, args, kwargs in ext.build_callbacks:
+                cb(self.build_temp, self.get_ext_fullpath(
+                    ext.name), *args, **kwargs)
+
             # Link objects to a shared object
-            abs_so_path = link_py_so(
-                src_objs+ext.extra_objects,
-                cwd=self.build_temp,
-                flags=ext.extra_link_args,
-                fort=any_fort(sources),
-                cplus=any_cplus(sources),
-                **ext.pycompilation_link_kwargs
-            )
-            copy(abs_so_path, self.get_ext_fullpath(
-                ext.name))
+            if ext.link_ext:
+                abs_so_path = link_py_so(
+                    src_objs+ext.extra_objects,
+                    cwd=self.build_temp,
+                    flags=ext.extra_link_args,
+                    fort=any_fort(sources),
+                    cplus=any_cplus(sources),
+                    **ext.pycompilation_link_kwargs
+                )
+                copy(abs_so_path, self.get_ext_fullpath(
+                    ext.name))
 
 
 def compile_link_import_py_ext(srcs, extname=None, build_dir=None,

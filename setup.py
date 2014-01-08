@@ -15,5 +15,5 @@ setup(
     license = "BSD",
     url='https://github.com/bjodah/'+name_,
     download_url='https://github.com/bjodah/'+name_+'/archive/v'+version_+'.tar.gz',
-    packages=['pycompilation'],
+    packages=[name_],
 )
