@@ -14,6 +14,11 @@ Mako comes highly recommended as template engine and a convenience method is pro
 Open Soucrce. Released under the very permissive simplified (2-clause) BSD license. See LICENCE.tx for further details.
 
 # Examples
+All files named *_main.py in examples/ show how pycompilation can be used.
+You may also look at other projects which uses pycompilation:
+-[cInterpol](http://github.com/bjodag/cinterpol)
+-[finitediff](http://github.com/bjodag/finitediff)
+-[symvarsub](http://github.com/bjodag/symvarsub)
 
 # TODO
 

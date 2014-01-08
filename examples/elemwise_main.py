@@ -94,7 +94,7 @@ def main(logger=None, clean=False):
     sofilepath = run_compilation(tempd, logger=logger)
     mod = import_(sofilepath)
 
-    N = 8*1024*1024
+    N = 16*1024*1024 # 3*128 MB if RAM needed
 
     for py_op, dtype_ in product([add,mul,sub,pow],
                               [np.float64, np.float32]):

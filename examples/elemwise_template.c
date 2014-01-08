@@ -7,9 +7,9 @@
 %for (opname, opformater, vec_opformater), (ctype, nptype, vectype, vecsize) in combos:
 void c_elem${opname}_${ctype}(
     const ${idxtype} N,
-    const ${ctype}* restrict a,
-    const ${ctype}* restrict b,
-    ${ctype}* restrict z)
+    const ${ctype}* const restrict a,
+    const ${ctype}* const restrict b,
+    ${ctype}* const restrict z)
 {
   #pragma omp parallel for
   for (${idxtype} i = 0; i < N; ++i)
@@ -25,9 +25,9 @@ void c_elem${opname}_${ctype}(
 %if vec_opformater != None:
 void c_vec${opname}_${ctype}(
     const ${idxtype} N,
-    const ${ctype}* restrict a,
-    const ${ctype}* restrict b,
-    ${ctype}* restrict z)
+    const ${ctype}* const restrict a,
+    const ${ctype}* const restrict b,
+    ${ctype}* const restrict z)
 {
   ${vectype} * a_ = (${vectype} *)a;
   ${vectype} * b_ = (${vectype} *)b;
