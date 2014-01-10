@@ -69,7 +69,7 @@ def make_dirs(path):
 
 
 def copy(src, dst, only_update=False, copystat=True, cwd=None,
-         dest_is_dir=False, create_dest_dirs=False):
+         dest_is_dir=False, create_dest_dirs=False, logger=None):
     """
     Augmented shutil.copy with extra options and slightly
     modified behaviour
@@ -122,6 +122,7 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
         if not missing_or_other_newer(dst, src):
             return
 
+    if logger: logger.debug("Copying {} to {}".format(src, dst))
     shutil.copy(src, dst)
     if copystat:
         shutil.copystat(src, dst)
@@ -145,7 +146,7 @@ def run_sub_setup(cb, destdir, **kwargs):
 
 def render_mako_template_to(
         template, outpath, subsd, only_update=False, cwd=None,
-        prev_subsd=None, create_dest_dirs=False):
+        prev_subsd=None, create_dest_dirs=False, logger=None, **kwargs):
     """
     template: either string of path or file like obj.
 
@@ -165,8 +166,11 @@ def render_mako_template_to(
                 "Dest. dir. non-existent: {}".format(outdir))
 
     if only_update:
-        if prev_subsd == subsd and \
-           not missing_or_other_newer(outpath, template):
+        if prev_subsd == subsd and not \
+           missing_or_other_newer(outpath, template):
+            if logger:
+                msg = "Did not re-render {}. (destination newer + same dict)"
+                logger.info(msg.format(template))
             return
 
     if hasattr(template, 'read'):
@@ -177,25 +181,28 @@ def render_mako_template_to(
         ifh = open(template, 'rt')
 
     template_str = ifh.read()
+
+    kwargs_Template = {'input_encoding': 'utf-8', 'output_encoding': 'utf-8'}
+    kwargs_Template.update(kwargs)
     with open(outpath, 'wt') as ofh:
         try:
-            rendered = Template(template_str).render(**subsd)
+            rendered = Template(template_str, **kwargs_Template).render(**subsd)
         except:
             print(text_error_template().render())
             raise
-
+        if logger: logger.info("Rendering '{}' to '{}'...".format(ifh.name, outpath))
         ofh.write(rendered)
     return outpath
 
 
-def md5_of_file(path):
+def md5_of_file(path, nblocks=128):
     """
     Use .digest() or .hexdigest() on returned object
     to get binary or hex encoded string.
     """
     md = md5()
     with open(path,'rb') as f:
-        for chunk in iter(lambda: f.read(128*md.block_size), b''):
+        for chunk in iter(lambda: f.read(nblocks*md.block_size), b''):
              md.update(chunk)
     return md
 

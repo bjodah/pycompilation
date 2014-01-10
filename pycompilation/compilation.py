@@ -714,8 +714,8 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
     if CompilerRunner_ == None:
         if ext.lower() == '.pyx':
             return pyx2obj(srcpath, objpath=objpath,
-                           inc_dirs=inc_dirs,
-                           cwd=cwd, **kwargs)
+                           inc_dirs=inc_dirs, cwd=cwd,
+                           only_update=only_update, **kwargs)
         CompilerRunner_, std = extension_mapping[ext.lower()]
         if not 'std' in kwargs: kwargs['std'] = std
 

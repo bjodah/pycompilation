@@ -11,7 +11,8 @@ from distutils.command import build_ext
 from distutils.extension import Extension
 
 from .compilation import extension_mapping, FortranCompilerRunner, CppCompilerRunner, compile_sources, link_py_so
-from .util import copy, get_abspath, render_mako_template_to, import_
+from .util import copy, get_abspath, render_mako_template_to, import_, MetaReaderWriter
+from ._helpers import FileNotFoundError
 
 def is_fortran_file(src):
     name, ext = os.path.splitext(src)
@@ -59,6 +60,8 @@ def CleverExtension(*args, **kwargs):
     -`pass_extra_compile_args`: True/False, default: False, should ext.extra_compile_args be
         passed along?
     """
+    vals = {}
+
     intercept = {
         'build_callbacks': (), # tuple of (callback, args, kwargs)
         'link_ext': True,
@@ -69,10 +72,28 @@ def CleverExtension(*args, **kwargs):
         'pycompilation_compile_kwargs': {},
         'pycompilation_link_kwargs': {},
     }
-    vals = {}
     for k, v in intercept.items():
         vals[k] = kwargs.pop(k, v)
+
+    intercept2 = {
+        'logger': None,
+        'only_update': True,
+    }
+    for k, v in intercept2.items():
+        vck = kwargs.pop(k, v)
+        vck = vals['pycompilation_compile_kwargs'].pop(k, vck)
+        vck = vck or vals['pycompilation_link_kwargs'].pop(k, vck)
+        vals[k] = vck
+
     instance = Extension(*args, **kwargs)
+
+    if vals['logger'] == True:
+        # interpret as we should instantiate a logger
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        vals['logger'] = logging.getLogger('CleverExtension')
+
+
     for k, v in vals.items():
         setattr(instance, k, v)
 
@@ -96,35 +117,50 @@ class clever_build_ext(build_ext.build_ext):
                     if re.match(pattern, filename):
                         tgt = os.path.join(dirname, re.sub(
                                 pattern, target, filename))
+                        rw = MetaReaderWriter('.metadata_subsd')
+                        try:
+                            prev_subsd = rw.get_from_metadata_file(self.build_temp, f)
+                        except FileNotFoundError:
+                            prev_subsd = None
+
                         render_mako_template_to(
                             get_abspath(f),
                             os.path.join(self.build_temp, tgt),
                             subsd,
-                            only_update=True,
-                            create_dest_dirs=True)
+                            only_update=ext.only_update,
+                            prev_subsd=prev_subsd,
+                            create_dest_dirs=True,
+                            logger=ext.logger)
+                        rw.save_to_metadata_file(self.build_temp, f, subsd)
                         sources.append(tgt)
                         break
                 else:
                     copy(f,
                          os.path.join(self.build_temp,
                                       os.path.dirname(f)),
+                         only_update=ext.only_update,
                          dest_is_dir=True,
-                         create_dest_dirs=True)
+                         create_dest_dirs=True,
+                         logger=ext.logger)
                     sources.append(f)
 
             for f in ext.copy_files:
                 copy(f, os.path.join(self.build_temp,
                                      os.path.dirname(f)),
+                     only_update=ext.only_update,
                      dest_is_dir=True,
-                     create_dest_dirs=True)
+                     create_dest_dirs=True,
+                     logger=ext.logger)
             for f, rel_dst in ext.dist_files:
                 rel_dst = rel_dst or os.path.basename(f)
                 copy(
                     f,
                     os.path.join(
                         os.path.dirname(self.get_ext_fullpath(ext.name)),
-                        rel_dst
+                        rel_dst,
+                        logger=ext.logger
                     ),
+                    only_update=ext.only_update,
                     #dest_is_dir=True,
                     #create_dest_dirs=True
                 )
@@ -144,6 +180,8 @@ class clever_build_ext(build_ext.build_ext):
                 defmacros=ext.define_macros,
                 undefmacros=ext.undef_macros,
                 libs=ext.libraries,
+                logger=ext.logger,
+                only_update=ext.only_update,
                 **ext.pycompilation_compile_kwargs
             )
 
@@ -159,10 +197,12 @@ class clever_build_ext(build_ext.build_ext):
                     flags=ext.extra_link_args,
                     fort=any_fort(sources),
                     cplus=any_cplus(sources),
+                    logger=ext.logger,
+                    only_update=ext.only_update,
                     **ext.pycompilation_link_kwargs
                 )
                 copy(abs_so_path, self.get_ext_fullpath(
-                    ext.name))
+                    ext.name), only_update=ext.only_update, logger=ext.logger)
 
 
 def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
