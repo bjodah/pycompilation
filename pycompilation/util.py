@@ -210,7 +210,7 @@ def md5_of_file(path, nblocks=128):
 def missing_or_other_newer(path, other_path, cwd=None):
     cwd = cwd or '.'
     path = get_abspath(path, cwd=cwd)
-    other_path = get_abspath(other_path, cwd)
+    other_path = get_abspath(other_path, cwd=cwd)
     if not os.path.exists(path):
         return True
     if os.path.getmtime(other_path) > os.path.getmtime(path):
