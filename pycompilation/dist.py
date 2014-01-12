@@ -171,14 +171,21 @@ class clever_build_ext(build_ext.build_ext):
                 # harms performance.
                 ext.pycompilation_compile_kwargs['flags'] =\
                     ext.extra_compile_args,
+            if ext.define_macros:
+                ext.pycompilation_compile_kwargs['defmacros'] =\
+                    list(set(ext.define_macros+\
+                             ext.pycompilation_compile_kwargs['defmacros']))
+            if ext.undef_macros:
+                ext.pycompilation_compile_kwargs['undefmacros'] =\
+                    list(set(ext.undef_macros+\
+                             ext.pycompilation_compile_kwargs['undefmacros']))
+
             # Compile sources to object files
             src_objs = compile_sources(
                 sources,
                 cwd=self.build_temp,
                 inc_dirs=map(get_abspath, ext.include_dirs),
                 lib_dirs=map(get_abspath, ext.library_dirs),
-                defmacros=ext.define_macros,
-                undefmacros=ext.undef_macros,
                 libs=ext.libraries,
                 logger=ext.logger,
                 only_update=ext.only_update,
