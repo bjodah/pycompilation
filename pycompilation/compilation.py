@@ -171,7 +171,8 @@ class CompilerRunner(object):
         self.lib_options = lib_options or []
         self.logger = logger
         self.only_update = only_update
-        if run_linker:
+        self.run_linker = run_linker
+        if self.run_linker:
             # both gnu and intel compilers use '-c' for disabling linker
             self.flags = filter(lambda x: x != '-c', self.flags)
         else:
@@ -262,10 +263,11 @@ class CompilerRunner(object):
               ['-U'+x for x in self.undefmacros] +\
               ['-D'+x for x in self.defmacros] +\
               ['-I'+x for x in self.inc_dirs] +\
-              self.sources + \
-              ['-L'+x for x in self.lib_dirs] +\
-              ['-l'+x for x in self.libs] +\
-              self.linkline
+              self.sources
+        if self.run_linker:
+            cmd += ['-L'+x for x in self.lib_dirs]+ \
+                   ['-l'+x for x in self.libs] +\
+                   self.linkline
         counted = []
         for envvar in re.findall('\$\{(\w+)\}', ' '.join(cmd)):
             if os.getenv(envvar) == None:
@@ -316,12 +318,11 @@ class CompilerRunner(object):
 
         # Error handling
         if self.cmd_returncode != 0:
-            raise CompilationError(
-                ("Error executing '{0}' in {1}. "+\
-                 "Command exited with status {2}"+\
-                 " after givning the following output: {3}").format(
-                     ' '.join(self.cmd()), self.cwd, self.cmd_returncode,
-                     str(self.cmd_outerr)))
+            msg = "Error executing '{0}' in {1}. Command exited with status {2}"+\
+                  " after givning the following output: {3}\n"
+            raise CompilationError(msg.format(
+                ' '.join(self.cmd()), self.cwd, self.cmd_returncode,
+                str(self.cmd_outerr)))
 
         if self.logger and self.cmd_outerr: self.logger.info(
                 '...with output:\n'+self.cmd_outerr)
