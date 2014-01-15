@@ -21,6 +21,6 @@ You may also look at other projects which uses pycompilation:
 -[symvarsub](http://github.com/bjodag/symvarsub)
 
 # TODO
-Windows support
-PGI compilers
-Better Intel MKL linkline help (cf. "Intel® Math Kernel Library Link Line Advisor")
+* Windows support
+* PGI compilers
+* Better Intel MKL linkline help (cf. "Intel® Math Kernel Library Link Line Advisor")
