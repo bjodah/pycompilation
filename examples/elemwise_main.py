@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+#!/usr/bin/env python
+
 import os
 import tempfile
 import shutil
@@ -94,7 +97,7 @@ def main(logger=None, clean=False):
     sofilepath = run_compilation(tempd, logger=logger)
     mod = import_(sofilepath)
 
-    N = 16*1024*1024 # 3*128 MB if RAM needed
+    N = 16*1024*1024 # 3*128 MB of RAM needed
 
     for py_op, dtype_ in product([add,mul,sub,pow],
                               [np.float64, np.float32]):
