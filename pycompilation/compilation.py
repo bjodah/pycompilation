@@ -9,6 +9,7 @@ unless doing something like what compile_sources / src2obj do.
 
 from __future__ import print_function, division
 
+import glob
 import os
 import subprocess
 import shutil
@@ -16,7 +17,8 @@ import re
 
 from .util import (
     HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
-    expand_collection_in_dict, make_dirs, copy
+    expand_collection_in_dict, make_dirs, copy, Glob, ArbitraryDepthGlob,
+    glob_at_depth
 )
 from ._helpers import (
     find_binary_of_command, uniquify, assure_dir,
@@ -528,7 +530,18 @@ def compile_sources(files, CompilerRunner_=None,
         keyword arguemtns
     -`**kwargs`: default keyword arguments to pass to CompilerRunner_
     """
-    per_file_kwargs = per_file_kwargs or {}
+    _per_file_kwargs = {}
+
+    if per_file_kwargs != None:
+        for k, v in per_file_kwargs.items():
+            if isinstance(k, Glob):
+                for path in glob.glob(k.pathname):
+                    _per_file_kwargs[path] = v
+            elif isinstance(k, ArbitraryDepthGlob):
+                for path in glob_at_depth(k.filename):
+                    _per_file_kwargs[path] = v
+            else:
+                _per_file_kwargs[k] = v
 
     # Set up destination directory
     destdir = destdir or '.'
@@ -550,7 +563,7 @@ def compile_sources(files, CompilerRunner_=None,
         else:
             name, ext = os.path.splitext(os.path.basename(f))
         file_kwargs = kwargs.copy()
-        file_kwargs.update(per_file_kwargs.get(f, {}))
+        file_kwargs.update(_per_file_kwargs.get(f, {}))
         dstpaths.append(src2obj(
             f, CompilerRunner_, cwd=cwd,
             **file_kwargs

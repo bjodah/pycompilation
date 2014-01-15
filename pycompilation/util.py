@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
+
+import fnmatch
 import os
 import pickle
 import shutil
+from collections import namedtuple
 from hashlib import md5
 
 from mako.template import Template
@@ -22,6 +26,18 @@ def expand_collection_in_dict(d, key, new_items, no_duplicates=True):
     else:
         d[key] = new_items
 
+Glob = namedtuple('Glob', 'pathname')
+ArbitraryDepthGlob = namedtuple('ArbitraryDepthGlob', 'filename')
+
+def glob_at_depth(filename_glob, cwd=None):
+    if cwd == None: cwd = '.'
+    globbed = []
+    for root, dirs, filenames in os.walk(cwd):
+        for fn in filenames:
+            if fnmatch.fnmatch(fn, filename_glob):
+                globbed.append(os.path.join(root, fn))
+    print('globbed', globbed)
+    return globbed
 
 def term_fmt(s, fg=('red','black')):
     """
