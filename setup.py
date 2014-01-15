@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from distutils.core import setup
+import pycompilation
 
 name_ = 'pycompilation'
-version_ = '0.2.6'
 
 setup(
     name=name_,
-    version=version_,
+    version=pycompilation.__version__,
     author='Björn Dahlgren',
     author_email='bjodah@DELETEMEgmail.com',
     description='Python package for codegeneration and compilation (meta programming).',
