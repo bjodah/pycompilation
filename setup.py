@@ -14,6 +14,6 @@ setup(
     description='Python package for codegeneration and compilation (meta programming).',
     license = "BSD",
     url='https://github.com/bjodah/'+name_,
-    download_url='https://github.com/bjodah/'+name_+'/archive/v'+version_+'.tar.gz',
+    download_url='https://github.com/bjodah/'+name_+'/archive/v'+pycompilation.__version__+'.tar.gz',
     packages=[name_],
 )
