@@ -33,7 +33,7 @@ import sympy
 
 # Intrapackage imports
 from ._helpers import defaultnamedtuple
-from .util import import_, render_mako_template_to
+from .util import import_, render_mako_template_to, copy
 from .compilation import (
     FortranCompilerRunner, CCompilerRunner,
     CppCompilerRunner, link_py_so, compile_sources)
@@ -273,7 +273,7 @@ class Generic_Code(object):
             srcpath = os.path.join(self._basedir, path)
             dstpath = os.path.join(self._tempdir,
                          os.path.basename(path))
-            shutil.copy(srcpath, dstpath)
+            copy(srcpath, dstpath)
             self._written_files.append(dstpath)
 
         subs = self.variables()
