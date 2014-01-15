@@ -685,7 +685,7 @@ extension_mapping = {
     '.f'  : (FortranCompilerRunner, None),
     '.for': (FortranCompilerRunner, None),
     '.ftn': (FortranCompilerRunner, None),
-    '.f90': (FortranCompilerRunner, 'f08'), # ifort only knows about .f90
+    '.f90': (FortranCompilerRunner, 'f2008'), # ifort only knows about .f90
     '.f95': (FortranCompilerRunner, 'f95'),
     '.f03': (FortranCompilerRunner, 'f2003'),
     '.f08': (FortranCompilerRunner, 'f2008'),
