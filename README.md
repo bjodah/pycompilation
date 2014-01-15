@@ -1,17 +1,17 @@
 pycompilation
 =========
 
-pycompilation bundles python convenience classes and function for performing compilation
-and linking on the fly from python. Developed with codegeneration, compilation and
-import (meta-programming) of math related problems using the SymPy package.
+pycompilation bundles python convenience classes and functions for performing compilation
+and linking on the fly from python. Developed with code-generation, compilation and
+import (meta-programming) of math related problems using the SymPy package in mind.
 
 # Templating
 
-Mako comes highly recommended as template engine and a convenience method is provided in helpers:
-`render_template_to(...)` which makes use of template files convenient for code generation.
+Mako comes highly recommended as a template engine. For easier usage, a convenience method is provided in ``pycompilation.util``:
+``render_template_to(...)``
 
 # License
-Open Soucrce. Released under the very permissive simplified (2-clause) BSD license. See LICENCE.tx for further details.
+Open Soucrce. Released under the very permissive simplified (2-clause) BSD license. See LICENSE.tx for further details.
 
 # Examples
 All files named *_main.py in examples/ show how pycompilation can be used.
@@ -21,4 +21,6 @@ You may also look at other projects which uses pycompilation:
 -[symvarsub](http://github.com/bjodag/symvarsub)
 
 # TODO
-
+Windows support
+PGI compilers
+Better Intel MKL linkline help (cf. "Intel® Math Kernel Library Link Line Advisor")
