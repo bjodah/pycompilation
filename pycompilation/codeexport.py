@@ -37,7 +37,6 @@ from .util import import_, render_mako_template_to, copy
 from .compilation import (
     FortranCompilerRunner, CCompilerRunner,
     CppCompilerRunner, link_py_so, compile_sources)
-from .helpers import defaultnamedtuple
 
 
 Loop = namedtuple('Loop', ('counter', 'bounds_idx', 'body'))

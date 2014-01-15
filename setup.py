@@ -4,7 +4,7 @@
 from distutils.core import setup
 
 name_ = 'pycompilation'
-version_ = '0.2.5'
+version_ = '0.2.6'
 
 setup(
     name=name_,
