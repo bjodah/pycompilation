@@ -151,24 +151,6 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
     return dst
 
 
-def run_sub_setup(cb, destdir, **kwargs):
-    """
-    Useful for calling in a setup.py script
-    see symodesys's setup.py for an example
-
-    Pass keyword arg. `cwd` to execute in other
-    directory.
-    """
-    ori_dir = os.path.abspath(os.curdir)
-    os.chdir(kwargs.get('cwd', '.'))
-    if os.path.exists(destdir):
-        assert os.path.isdir(destdir)
-    else:
-        make_dirs(destdir)
-    cb(destdir, **kwargs)
-    os.chdir(ori_dir)
-
-
 def render_mako_template_to(
         template, outpath, subsd, only_update=False, cwd=None,
         prev_subsd=None, create_dest_dirs=False, logger=None,

@@ -551,7 +551,7 @@ def compile_sources(files, CompilerRunner_=None,
         else:
             make_dirs(destdir)
     if cwd == None:
-        cwd = destdir
+        cwd = '.' #destdir
         for f in files:
             copy(f, destdir, only_update=True, dest_is_dir=True)
 
