@@ -527,7 +527,7 @@ def compile_sources(files, CompilerRunner_=None,
         other directory.
     -`keep_dir_struct`: keep dir strucutre in destdir
     -`per_file_kwargs`: dict mapping instances in `files` to
-        keyword arguemtns
+        keyword arguments
     -`**kwargs`: default keyword arguments to pass to CompilerRunner_
     """
     _per_file_kwargs = {}
@@ -571,24 +571,29 @@ def compile_sources(files, CompilerRunner_=None,
     return dstpaths
 
 
-def link_py_so(obj_files, CompilerRunner_=None,
-               so_file=None, cwd=None, libs=None,
-               cplus=False, fort=False, **kwargs):
+def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
+         cwd=None, cplus=False, fort=False, **kwargs):
     """
-    Generate shared object for importing
+    Link python extension module (shared object) for importing
 
     Arguments:
     -`obj_files`: list of paths to object files to be linked
+    -`out_file`: Name (path) of executable/shared object file to create. If
+        not specified it will have the basname of the last object
+        file in `obj_files`. And in the case of shared object it will
+        also carry the platform conventional extension (Unix: '.so',
+        Windows: '.dll').
     -`CompilerRunner_`: An appropriate subclass of CompilerRunner
-    -`so_file`: Name (path) of shared object file to create. If
-         not specified it will have the basname of the last object
-         file in `obj_files` but with the extensino '.so' (Unix
-         conventin, Windows users may patch and make a pull request).
 
     return the absolute to the generate shared object
+
+    Links `obj_files` into possibly (shared=True)
+    shared objct or executable binary. Pass cplus and fort
+    respectively to for automatic choice of compiler for linking
     """
-    libs = libs or []
-    so_file = so_file or os.path.splitext(obj_files[-1])[0]+sharedext
+    if out_file == None:
+        out_file, ext = os.path.splitext(os.path.basename(obj_files[-1]))
+        if shared: out_file += sharedext
 
     if not CompilerRunner_:
         if fort:
@@ -606,6 +611,38 @@ def link_py_so(obj_files, CompilerRunner_=None,
                 CompilerRunner_ = CppCompilerRunner
             else:
                 CompilerRunner_ = CCompilerRunner
+
+    flags = kwargs.pop('flags',[])
+    if shared:
+        if not '-shared' in flags:
+            flags.append('-shared')
+    run_linker = kwargs.pop('run_linker', True)
+    if not run_linker: raise ValueError("link(..., run_linker=False)!?")
+
+    out_file = get_abspath(out_file, cwd=cwd)
+    runner = CompilerRunner_(
+        obj_files, out_file, flags,
+        cwd=cwd,
+        **kwargs)
+    runner.run()
+    return out_file
+
+
+def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
+               cplus=False, fort=False, **kwargs):
+    """
+    Link python extension module (shared object) for importing
+
+    Arguments:
+    -`obj_files`: list of paths to object files to be linked
+    -`so_file`: Name (path) of shared object file to create. If
+         not specified it will have the basname of the last object
+         file in `obj_files` but with the extensino '.so' (Unix
+         conventin, Windows users may patch and make a pull request).
+
+    return the absolute to the generate shared object
+    """
+    libs = libs or []
 
     from distutils.sysconfig import get_config_vars
     inc_dirs = kwargs.pop('inc_dirs', [])
@@ -628,16 +665,8 @@ def link_py_so(obj_files, CompilerRunner_=None,
 
     flags.extend(kwargs.pop('flags',[]))
 
-    so_file = get_abspath(so_file, cwd=cwd)
-    runner = CompilerRunner_(
-        obj_files, so_file, flags,
-        cwd=cwd,
-        inc_dirs=inc_dirs,
-        libs=libs,
-        lib_dirs=lib_dirs,
-        **kwargs)
-    runner.run()
-    return so_file
+    return link(obj_files, shared=True, flags=flags, cwd=cwd,
+                inc_dirs=inc_dirs, libs=libs, lib_dirs=lib_dirs, **kwargs)
 
 
 def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
