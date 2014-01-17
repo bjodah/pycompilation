@@ -158,8 +158,8 @@ class clever_build_ext(build_ext.build_ext):
                     os.path.join(
                         os.path.dirname(self.get_ext_fullpath(ext.name)),
                         rel_dst,
-                        logger=ext.logger
                     ),
+                    logger=ext.logger,
                     only_update=ext.only_update,
                     #dest_is_dir=True,
                     #create_dest_dirs=True
