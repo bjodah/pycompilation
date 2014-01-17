@@ -1,4 +1,8 @@
-// This is a Mako (http://docs.makotemplates.org/) template of a C-source code (C99) file
+// ${_warning_in_the_generated_file_not_to_edit}
+
+<%doc>
+   This is a Mako (http://docs.makotemplates.org/) template of a C-source code (C99) file
+</%doc>
 
 ##// Essentially "import pycompilation.codeexport as ce"
 <%namespace name="ce" module="pycompilation.codeexport"/>

@@ -1,4 +1,8 @@
-// mako template of C99 source
+// ${_warning_in_the_generated_file_not_to_edit}
+
+<%doc>
+  mako template of C99 source
+<%doc>
 
 #include <math.h>
 #include <xmmintrin.h>
