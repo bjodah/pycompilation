@@ -68,7 +68,7 @@ def get_abspath(path, cwd=None):
             os.path.join(cwd, path)
         )
 
-def make_dirs(path):
+def make_dirs(path, logger=None):
     if path[-1] == '/':
         parent = os.path.dirname(path[:-1])
     else:
@@ -76,9 +76,10 @@ def make_dirs(path):
 
     if len(parent) > 0:
         if not os.path.exists(parent):
-            make_dirs(parent)
+            make_dirs(parent, logger=logger)
 
     if not os.path.exists(path):
+        if logger: logger.info("Making dir: "+path)
         os.mkdir(path, 0o777)
     else:
         assert os.path.isdir(path)
@@ -128,7 +129,7 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
 
     if not os.path.exists(dest_dir):
         if create_dest_dirs:
-            make_dirs(dest_dir)
+            make_dirs(dest_dir, logger=logger)
         else:
             msg = "You must create directory first."
             print(msg) # distutils just spits out `error: None`
@@ -174,7 +175,7 @@ def render_mako_template_to(
 
     if not os.path.exists(outdir):
         if create_dest_dirs:
-            make_dirs(outdir)
+            make_dirs(outdir, logger=logger)
         else:
             raise FileNotFoundError(
                 "Dest. dir. non-existent: {}".format(outdir))
