@@ -143,27 +143,3 @@ def pyx_is_cplus(path):
                rhs.strip().split()[0].lower() == 'c++':
                     return True
     return False
-
-def prebuild_Code(srcdir, destdir, build_temp, Code, all_sources, downloads=None, **kwargs):
-    from .compilation import compile_sources
-    from .util import download_files, copy
-    if downloads:
-        websrc, src_md5 = downloads
-        download_files(websrc, src_md5.keys(), src_md5, cwd=srcdir)
-
-    for attr in ('copy_files', 'templates'):
-        lst = getattr(Code, attr, []) or []
-        for d in (destdir, build_temp): # headers and stuff
-            for cf in filter(lambda x: not x.startswith('prebuilt'), lst):
-                copy(os.path.join(srcdir, cf), d)
-
-    map(lambda x: copy(os.path.join(srcdir, x),
-                       os.path.join(build_temp, x),
-                       create_dest_dirs=True,
-                       logger=kwargs.pop('logger', None)),
-        all_sources)
-    destdir = os.path.abspath(os.path.join(destdir, 'prebuilt'))
-
-    return compile_sources(
-        all_sources, destdir=destdir, cwd=build_temp, metadir=destdir,
-        only_update=True, **kwargs)

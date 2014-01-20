@@ -431,3 +431,33 @@ class F90_Code(Generic_Code):
                         names.append(
                             stripped_lower.split('module')[1].strip())
         return names
+
+def prebuild_Code(srcdir, destdir, build_temp, Code, all_sources, downloads=None, **kwargs):
+    from .compilation import compile_sources
+    from .util import download_files, copy
+
+    logger = kwargs.pop('logger', None)
+    if downloads:
+        websrc, src_md5 = downloads
+        download_files(websrc, src_md5.keys(), src_md5,
+                       cwd=srcdir, logger=logger)
+
+    for attr in ('copy_files', 'templates'):
+        lst = getattr(Code, attr, []) or []
+        for d in (destdir, build_temp): # headers and stuff
+            for cf in filter(lambda x: not x.startswith('prebuilt'), lst):
+                copy(os.path.join(srcdir, cf), d, logger=logger)
+
+    map(lambda x: copy(os.path.join(srcdir, x),
+                       os.path.join(build_temp, x),
+                       create_dest_dirs=True,
+                       logger=logger),
+        all_sources)
+    destdir = os.path.abspath(os.path.join(destdir, 'prebuilt'))
+
+    compile_kwargs = Code.compile_kwargs.copy()
+    compile_kwargs.update(kwargs)
+
+    return compile_sources(
+        all_sources, destdir=destdir, cwd=build_temp, metadir=destdir,
+        only_update=True, logger=logger, **compile_kwargs)

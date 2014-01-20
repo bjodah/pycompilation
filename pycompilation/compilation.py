@@ -666,7 +666,8 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
     flags.extend(kwargs.pop('flags',[]))
 
     return link(obj_files, shared=True, flags=flags, cwd=cwd,
-                inc_dirs=inc_dirs, libs=libs, lib_dirs=lib_dirs, **kwargs)
+                cplus=cplus, fort=fort, inc_dirs=inc_dirs, libs=libs,
+                lib_dirs=lib_dirs, **kwargs)
 
 
 def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
