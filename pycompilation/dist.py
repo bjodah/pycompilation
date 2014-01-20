@@ -65,7 +65,7 @@ def CleverExtension(*args, **kwargs):
     intercept = {
         'build_callbacks': (), # tuple of (callback, args, kwargs)
         'link_ext': True,
-        'copy_files': (),
+        'build_files': (),
         'dist_files': (), # work around stackoverflow.com/questions/2994396/
         'template_regexps': [],
         'pass_extra_compile_args': False, # use distutils extra_compile_args?
@@ -144,7 +144,7 @@ class clever_build_ext(build_ext.build_ext):
                          logger=ext.logger)
                     sources.append(f)
 
-            for f in ext.copy_files:
+            for f in ext.build_files:
                 copy(f, os.path.join(self.build_temp,
                                      os.path.dirname(f)),
                      only_update=ext.only_update,
@@ -194,7 +194,7 @@ class clever_build_ext(build_ext.build_ext):
 
             for cb, args, kwargs in ext.build_callbacks:
                 cb(self.build_temp, self.get_ext_fullpath(
-                    ext.name), *args, **kwargs)
+                    ext.name), ext, *args, **kwargs)
 
             # Link objects to a shared object
             if ext.link_ext:

@@ -145,7 +145,7 @@ class Generic_Code(object):
     tempdir_basename = 'generic_code'
     _basedir = None
     _cached_files = None
-    copy_files = None
+    build_files = None
     source_files = None
     templates = None
     obj_files = None
@@ -156,7 +156,7 @@ class Generic_Code(object):
 
     list_attributes = (
         '_written_files', # Track files which are written
-        'copy_files',   # Files that will be copied prior to compilation
+        'build_files',   # Files that will be copied prior to compilation
         'source_files',
         'templates',
         'obj_files',
@@ -267,7 +267,7 @@ class Generic_Code(object):
             rel_path = os.path.join(self._tempdir, path)
             if os.path.exists(rel_path):
                 os.unlink(rel_path)
-        for path in self.copy_files:
+        for path in self.build_files:
             # Copy files
             srcpath = os.path.join(self._basedir, path)
             dstpath = os.path.join(self._tempdir,
@@ -432,32 +432,63 @@ class F90_Code(Generic_Code):
                             stripped_lower.split('module')[1].strip())
         return names
 
-def prebuild_Code(srcdir, destdir, build_temp, Code, all_sources, downloads=None, **kwargs):
-    from .compilation import compile_sources
-    from .util import download_files, copy
 
-    logger = kwargs.pop('logger', None)
-    if downloads:
-        websrc, src_md5 = downloads
-        download_files(websrc, src_md5.keys(), src_md5,
-                       cwd=srcdir, logger=logger)
+def make_CleverExtension_for_prebuilding_Code(
+        name, Code, prebuild_sources, srcdir, downloads=None, **kwargs):
+    """
+    If subclass of codeexport.GenericCode needs to have some of it
+    sources compiled to objects and cached in a `prebuilt/` directory
+    at invocation of `setup.py build_ext` this convenience function
+    makes setting up a CleverExtension easier. Use together with
+    cmdclass = {'build_ext': clever_build_ext}.
+    """
 
-    for attr in ('copy_files', 'templates'):
+    from .util import download_files, make_dirs
+    from .dist import CleverExtension
+
+    build_files, dist_files = [], []
+    for attr in ('build_files', 'templates'):
         lst = getattr(Code, attr, []) or []
-        for d in (destdir, build_temp): # headers and stuff
-            for cf in filter(lambda x: not x.startswith('prebuilt'), lst):
-                copy(os.path.join(srcdir, cf), d, logger=logger)
+        for cf in filter(lambda x: not x.startswith('prebuilt'), lst):
+            build_files.append(os.path.join(srcdir, cf))
+            dist_files.append((os.path.join(srcdir, cf), None))
 
-    map(lambda x: copy(os.path.join(srcdir, x),
-                       os.path.join(build_temp, x),
-                       create_dest_dirs=True,
-                       logger=logger),
-        all_sources)
-    destdir = os.path.abspath(os.path.join(destdir, 'prebuilt'))
+
+    def prebuilder(build_temp, ext_fullpath, ext, src_paths, **prebuilder_kwargs):
+        build_temp = os.path.abspath(build_temp)
+        if not os.path.isdir(build_temp): make_dirs(build_temp)
+
+        if downloads:
+            websrc, src_md5 = downloads
+            download_dir = os.path.join(build_temp, srcdir)
+            if not os.path.isdir(download_dir): make_dirs(download_dir)
+            download_files(websrc, src_md5.keys(), src_md5,
+                           cwd=download_dir, logger=ext.logger)
+
+        for p in src_paths:
+            if not p in build_files:
+                copy(os.path.join(srcdir, p), os.path.join(build_temp, srcdir), logger=ext.logger)
+        dst = os.path.abspath(os.path.join(os.path.dirname(ext_fullpath), 'prebuilt/'))
+        make_dirs(dst, logger=ext.logger)
+        return compile_sources(
+            [os.path.join(srcdir, x) for x in src_paths], destdir=dst,
+            cwd=build_temp, metadir=dst, only_update=True,
+            logger=ext.logger, **prebuilder_kwargs)
 
     compile_kwargs = Code.compile_kwargs.copy()
+    logger = kwargs.pop('logger', True)
     compile_kwargs.update(kwargs)
-
-    return compile_sources(
-        all_sources, destdir=destdir, cwd=build_temp, metadir=destdir,
-        only_update=True, logger=logger, **compile_kwargs)
+    return CleverExtension(
+        name,
+        [],
+        build_files=build_files,
+        dist_files=dist_files,
+        build_callbacks=[
+            (
+                prebuilder,
+                (prebuild_sources,), compile_kwargs
+            ),
+        ],
+        logger=logger,
+        link_ext=False
+    )
