@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from distutils.core import setup
-import pycompilation
 
 name_ = 'pycompilation'
+version_ = '0.2.13'
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -22,13 +22,13 @@ classifiers = [
 
 setup(
     name=name_,
-    version=pycompilation.__version__,
+    version=version_,
     author='Björn Dahlgren',
     author_email='bjodah@DELETEMEgmail.com',
     description='Python package for codegeneration and compilation (meta programming).',
     license = "BSD",
     url='https://github.com/bjodah/'+name_,
-    download_url='https://github.com/bjodah/'+name_+'/archive/v'+pycompilation.__version__+'.tar.gz',
+    download_url='https://github.com/bjodah/'+name_+'/archive/v'+version_+'.tar.gz',
     packages=[name_],
     classifiers = classifiers
 )
