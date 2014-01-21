@@ -7,8 +7,6 @@ import shutil
 from collections import namedtuple
 from hashlib import md5
 
-from mako.template import Template
-from mako.exceptions import text_error_template
 
 from ._helpers import FileNotFoundError
 
@@ -210,6 +208,8 @@ def render_mako_template_to(
     kwargs_Template = {'input_encoding': 'utf-8', 'output_encoding': 'utf-8'}
     kwargs_Template.update(kwargs)
     with open(outpath, 'wt') as ofh:
+        from mako.template import Template
+        from mako.exceptions import text_error_template
         try:
             rendered = Template(template_str, **kwargs_Template).render(**subsd)
         except:
