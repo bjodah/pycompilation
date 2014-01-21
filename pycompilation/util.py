@@ -34,7 +34,6 @@ def glob_at_depth(filename_glob, cwd=None):
         for fn in filenames:
             if fnmatch.fnmatch(fn, filename_glob):
                 globbed.append(os.path.join(root, fn))
-    print('globbed', globbed)
     return globbed
 
 def term_fmt(s, fg=('red','black')):
@@ -106,7 +105,6 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
     if not os.path.exists(src):
         # Source needs to exist
         msg = "Source: `{}` does not exist".format(src)
-        print(msg) # distutils just spits out `error: None`
         raise FileNotFoundError(msg)
 
     # We accept both (re)naming destination file _or_
@@ -130,7 +128,6 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
             make_dirs(dest_dir, logger=logger)
         else:
             msg = "You must create directory first."
-            print(msg) # distutils just spits out `error: None`
             raise FileNotFoundError(msg)
 
     if only_update:
@@ -213,7 +210,10 @@ def render_mako_template_to(
         try:
             rendered = Template(template_str, **kwargs_Template).render(**subsd)
         except:
-            print(text_error_template().render())
+            if logger:
+                logger.error(text_error_template().render())
+            else:
+                print(text_error_template().render())
             raise
         if logger: logger.info("Rendering '{}' to '{}'...".format(ifh.name, outpath))
         ofh.write(rendered)
@@ -241,7 +241,6 @@ def missing_or_other_newer(path, other_path, cwd=None):
     if os.path.getmtime(other_path) > os.path.getmtime(path):
         return True
     return False
-
 
 
 class HasMetaData(object):
@@ -281,6 +280,7 @@ class HasMetaData(object):
             pickle.dump(d, open(fullpath,'w'))
         else:
             pickle.dump({key: value}, open(fullpath,'w'))
+
 
 def MetaReaderWriter(filename):
     class ReaderWriter(HasMetaData):
