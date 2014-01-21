@@ -14,17 +14,21 @@ from .compilation import extension_mapping, FortranCompilerRunner, CppCompilerRu
 from .util import copy, get_abspath, render_mako_template_to, import_, MetaReaderWriter
 from ._helpers import FileNotFoundError
 
-def is_fortran_file(src):
-    name, ext = os.path.splitext(src)
-    key = ext.lower()
-    if key in extension_mapping:
-        if extension_mapping[key][0] == FortranCompilerRunner:
-            return True
-    return False
+# def is_fortran_file(src):
+#     name, ext = os.path.splitext(src)
+#     key = ext.lower()
+#     if key in extension_mapping:
+#         if extension_mapping[key][0] == FortranCompilerRunner:
+#             return True
+#     return False
 
 def _any_X(srcs, cls):
     for src in srcs:
-        if is_fortran_file(src): return True
+        name, ext = os.path.splitext(src)
+        key = ext.lower()
+        if key in extension_mapping:
+            if extension_mapping[key][0] == cls:
+                return True
     return False
 
 def any_fort(srcs):
@@ -143,7 +147,7 @@ class clever_build_ext(build_ext.build_ext):
                          create_dest_dirs=True,
                          logger=ext.logger)
                     sources.append(f)
-
+            if ext.logger: ext.logger.info("Copying files needed for build..")
             for f in ext.build_files:
                 copy(f, os.path.join(self.build_temp,
                                      os.path.dirname(f)),
@@ -151,19 +155,6 @@ class clever_build_ext(build_ext.build_ext):
                      dest_is_dir=True,
                      create_dest_dirs=True,
                      logger=ext.logger)
-            for f, rel_dst in ext.dist_files:
-                rel_dst = rel_dst or os.path.basename(f)
-                copy(
-                    f,
-                    os.path.join(
-                        os.path.dirname(self.get_ext_fullpath(ext.name)),
-                        rel_dst,
-                    ),
-                    logger=ext.logger,
-                    only_update=ext.only_update,
-                    #dest_is_dir=True,
-                    #create_dest_dirs=True
-                )
 
             if ext.pass_extra_compile_args:
                 # By default we do not pass extra_compile_kwargs
@@ -180,6 +171,11 @@ class clever_build_ext(build_ext.build_ext):
                     list(set(ext.undef_macros+\
                              ext.pycompilation_compile_kwargs['undefmacros']))
 
+            # Run build_callbaks if any were provided
+            for cb, args, kwargs in ext.build_callbacks:
+                cb(self.build_temp, self.get_ext_fullpath(
+                    ext.name), ext, *args, **kwargs)
+
             # Compile sources to object files
             src_objs = compile_sources(
                 sources,
@@ -192,9 +188,20 @@ class clever_build_ext(build_ext.build_ext):
                 **ext.pycompilation_compile_kwargs
             )
 
-            for cb, args, kwargs in ext.build_callbacks:
-                cb(self.build_temp, self.get_ext_fullpath(
-                    ext.name), ext, *args, **kwargs)
+            if ext.logger: ext.logger.info("Copying files needed for distribution..")
+            for f, rel_dst in ext.dist_files:
+                rel_dst = rel_dst or os.path.basename(f)
+                copy(
+                    f,
+                    os.path.join(
+                        os.path.dirname(self.get_ext_fullpath(ext.name)),
+                        rel_dst,
+                    ),
+                    logger=ext.logger,
+                    only_update=ext.only_update,
+                    #dest_is_dir=True,
+                    #create_dest_dirs=True
+                )
 
             # Link objects to a shared object
             if ext.link_ext:

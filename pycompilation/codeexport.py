@@ -161,10 +161,6 @@ class Generic_Code(object):
         'templates',
         'obj_files',
         '_cached_files', # Files that should be removed between compilations
-        'inc_dirs', # -I
-        'libs',    # -l
-        'lib_dirs', # -L
-        'defmacros',
     )
 
     def __init__(self, tempdir=None, save_temp=False, logger=None):
@@ -199,8 +195,8 @@ class Generic_Code(object):
 
         # Initialize lists
         for lstattr in self.list_attributes:
-            setattr(self, lstattr,
-                    getattr(self, lstattr, None) or [])
+            setattr(self, lstattr, getattr(
+                self, lstattr, None) or [])
             # if not hasattr(self, lstattr):
             #     setattr(self, lstattr, [])
             # else:
@@ -334,8 +330,6 @@ class Generic_Code(object):
         sources = sources or self.source_files
         compile_sources(sources, self.CompilerRunner,
                         cwd=self._tempdir,
-                        inc_dirs=self.inc_dirs,
-                        defmacros=self.defmacros,
                         logger=self.logger,
                         **self.compile_kwargs)
 
@@ -345,9 +339,6 @@ class Generic_Code(object):
                    so_file=self.so_file,
                       cwd=self._tempdir,
                    fort=self.fort,
-                   libs=self.libs,
-                   lib_dirs=self.lib_dirs,
-                   defmacros=self.defmacros,
                    logger=self.logger,
                    **self.compile_kwargs)
 
@@ -436,7 +427,7 @@ class F90_Code(Generic_Code):
 def make_CleverExtension_for_prebuilding_Code(
         name, Code, prebuild_sources, srcdir, downloads=None, **kwargs):
     """
-    If subclass of codeexport.GenericCode needs to have some of it
+    If subclass of codeexport.Generic_Code needs to have some of it
     sources compiled to objects and cached in a `prebuilt/` directory
     at invocation of `setup.py build_ext` this convenience function
     makes setting up a CleverExtension easier. Use together with
@@ -448,10 +439,10 @@ def make_CleverExtension_for_prebuilding_Code(
 
     build_files, dist_files = [], []
     for attr in ('build_files', 'templates'):
-        lst = getattr(Code, attr, []) or []
-        for cf in filter(lambda x: not x.startswith('prebuilt'), lst):
-            build_files.append(os.path.join(srcdir, cf))
-            dist_files.append((os.path.join(srcdir, cf), None))
+        for cf in getattr(Code, attr, []) or []:
+            if not cf.startswith('prebuilt'):
+                build_files.append(os.path.join(srcdir, cf))
+                dist_files.append((os.path.join(srcdir, cf), None))
 
 
     def prebuilder(build_temp, ext_fullpath, ext, src_paths, **prebuilder_kwargs):
@@ -470,10 +461,17 @@ def make_CleverExtension_for_prebuilding_Code(
                 copy(os.path.join(srcdir, p), os.path.join(build_temp, srcdir), logger=ext.logger)
         dst = os.path.abspath(os.path.join(os.path.dirname(ext_fullpath), 'prebuilt/'))
         make_dirs(dst, logger=ext.logger)
-        return compile_sources(
+        objs = compile_sources(
             [os.path.join(srcdir, x) for x in src_paths], destdir=dst,
             cwd=build_temp, metadir=dst, only_update=True,
             logger=ext.logger, **prebuilder_kwargs)
+        for obj in objs:
+            # Copy prebuilt objects into lib for distriubtion
+            copy(os.path.join(build_temp, obj),
+                 dst, only_update=True,
+                 dest_is_dir=True, create_dest_dirs=True,
+                 logger=ext.logger)
+        return objs
 
     compile_kwargs = Code.compile_kwargs.copy()
     logger = kwargs.pop('logger', True)
