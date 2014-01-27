@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import logging
+import os
+import sys
 import tempfile
-from shutil import copy
-from pycompilation import src2obj, pyx2obj, link_py_so, CppCompilerRunner, import_, get_mixed_fort_c_linker
 
-from pycompilation.util import expand_collection_in_dict
+import shutil
+
+from pycompilation import src2obj, pyx2obj, link_py_so, CppCompilerRunner, import_
 
 examples_dir =  os.path.abspath(os.path.dirname(__file__))
 files = ['euclid.hpp', 'euclid_enorm.f90', 'euclid.cpp', 'euclid_wrapper.pyx']
@@ -20,7 +21,7 @@ def run_compilation(**kwargs):
     (which calls into an OpenMP enabled Fortran 2003 routine)
     """
     for f in files:
-        copy(f, kwargs['cwd'])
+        shutil.copy(f, kwargs['cwd'])
     objs = [
         src2obj('euclid_enorm.f90',
                 options=options_omp,
@@ -71,4 +72,7 @@ def main(logger=None, clean=False):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__file__)
-    main(logger=logger)
+    clean = False
+    if len(sys.argv) > 1:
+        clean = sys.argv[1] == 'clean'
+    main(logger=logger, clean=clean)

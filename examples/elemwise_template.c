@@ -2,7 +2,7 @@
 
 <%doc>
   mako template of C99 source
-<%doc>
+</%doc>
 
 #include <math.h>
 #include <xmmintrin.h>

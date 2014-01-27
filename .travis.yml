@@ -5,9 +5,8 @@ python:
 # command to install dependencies
 before_install:
   - "sudo apt-get install -qq python-numpy gcc gfortran g++"
-  - "pip install -r requirements.txt"
 install:
-  - "python setup.py install --user"
+  - "pip install -r requirements.txt"
 # command to run tests
 script: py.test
 notifications:

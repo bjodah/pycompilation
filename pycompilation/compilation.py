@@ -46,7 +46,10 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
     if not vendor:
         metadir = get_abspath(metadir or '.', cwd=cwd)
         reader = MetaReaderWriter('.metadata_CompilerRunner')
-        vendor = reader.get_from_metadata_file(metadir, 'vendor')
+        try:
+            vendor = reader.get_from_metadata_file(metadir, 'vendor')
+        except FileNotFoundError:
+            vendor = None
 
     if vendor == 'intel':
         if cplus:
@@ -69,6 +72,8 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
         else:
             return (FortranCompilerRunner,
                     {}, vendor)
+    else:
+        raise ValueError("No vendor found.")
 
 
 class CompilerRunner(object):
@@ -229,7 +234,6 @@ class CompilerRunner(object):
             try:
                 preferred_vendor = cls.get_from_metadata_file(
                     metadir, 'vendor')
-                #pcn = cls.compiler_dict.get(preferred_vendor, None)
                 used_metafile = True
             except FileNotFoundError:
                 pass
@@ -551,7 +555,7 @@ def compile_sources(files, CompilerRunner_=None,
         else:
             make_dirs(destdir)
     if cwd == None:
-        cwd = '.' #destdir
+        cwd = '.'
         for f in files:
             copy(f, destdir, only_update=True, dest_is_dir=True)
 

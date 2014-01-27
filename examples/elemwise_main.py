@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
-import os
-import tempfile
-import shutil
 import logging
-from itertools import product
+import os
+import shutil
+import sys
+import tempfile
 import time
+
+from itertools import product
+from operator import add, mul, sub, div, pow
 
 import numpy as np
 
 from pycompilation import pyx2obj, compile_sources, link_py_so, import_
 from pycompilation.util import render_mako_template_to
 
-from operator import add, mul, sub, div, pow
 
 def run_compilation(tempd, logger=None):
     # Let's compile elemwise.c and wrap it using cython
@@ -121,4 +123,7 @@ def main(logger=None, clean=False):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__file__)
-    main(logger=logger)
+    clean = False
+    if len(sys.argv) > 1:
+        clean = sys.argv[1] == 'clean'
+    main(logger=logger, clean=clean)

@@ -222,7 +222,7 @@ class clever_build_ext(build_ext.build_ext):
 
 
 def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
-                               compile_kwargs=None, link_kwargs=None):
+                               compile_kwargs=None, link_kwargs=None, **kwargs):
     """
     Compiles sources in `srcs` to a shared object (python extension)
     which is imported. If shared object is newer than the sources, they
@@ -235,7 +235,8 @@ def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
     -`build_dir`: path to directory in which objects files etc. are generated
     -`compile_kwargs`: dict, keyword arguments passed to compile_sources
     -`link_kwargs`: dict, keyword arguments passed to link_py_so
-
+    -`kwargs`: additional keyword arguments overwrites to both compile_kwargs and link_kwargs
+         useful for convenience e.g. when passing logger
     Returns:
     - the imported module
 
@@ -247,13 +248,19 @@ def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
     if extname == None:
         extname = os.path.splitext(os.path.basename(srcs[-1]))[0]
 
+    compile_kwargs = compile_kwargs or {}
+    compile_kwargs.update(kwargs)
+
+    link_kwargs = link_kwargs or {}
+    link_kwargs.update(kwargs)
+
     try:
         mod = import_(os.path.join(build_dir, extname), srcs)
     except ImportError:
-        objs = compile_sources(srcs, destdir=build_dir, **(compile_kwargs or {}))
+        objs = compile_sources(map(get_abspath, srcs), destdir=build_dir,
+                               cwd=build_dir, **compile_kwargs)
         so = link_py_so(
             objs, cwd=build_dir, fort=any_fort(srcs), cplus=any_cplus(srcs),
-            **(link_kwargs or {}))
+            **link_kwargs)
         mod = import_(so)
-
     return mod
