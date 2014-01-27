@@ -30,9 +30,9 @@ You may also look at other projects which uses pycompilation:
  - finitediff_ 
  - symvarsub_
 
-.. _cInterpol: http://github.com/bjodag/cinterpol
-.. _finitediff: http://github.com/bjodag/finitediff
-.. _symvarsub: http://github.com/bjodag/symvarsub
+.. _cInterpol: http://github.com/bjodah/cinterpol
+.. _finitediff: http://github.com/bjodah/finitediff
+.. _symvarsub: http://github.com/bjodah/symvarsub
 
 TODO
 ====
