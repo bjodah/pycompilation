@@ -400,7 +400,8 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         'cray-gnu': 'CC',
     }
 
-    standards = ('c++98', 'c++11') # First is the default
+    # First is the default, c++0x == c++11
+    standards = ('c++98', 'c++0x')
 
     std_formater = {
         'g++': '-std={}'.format,
@@ -841,7 +842,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     if not 'pic' in options: options.append('pic')
     if not 'warn' in options: options.append('warn')
     if cplus:
-        std = kwargs.pop('std', 'c++11')
+        std = kwargs.pop('std', 'c++0x')
     else:
         std = kwargs.pop('std', 'c99')
     return src2obj(

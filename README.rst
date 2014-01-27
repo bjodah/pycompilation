@@ -26,6 +26,7 @@ Examples
 Look at ``examples/*_main.py`` which show how pycompilation can be used.
 
 You may also look at other projects which uses pycompilation:
+
  - cInterpol_ 
  - finitediff_ 
  - symvarsub_
@@ -36,6 +37,7 @@ You may also look at other projects which uses pycompilation:
 
 TODO
 ====
+
  - Windows support
  - PGI compilers
  - Better Intel MKL linkline help (cf. "Intel® Math Kernel Library Link Line Advisor")
