@@ -166,7 +166,7 @@ def render_mako_template_to(
     if cwd:
         template = os.path.join(cwd, template)
         outpath = os.path.join(cwd, outpath)
-    outdir = os.path.dirname(outpath)
+    outdir = os.path.dirname(outpath) or '.' # avoid ''
 
     if not os.path.exists(outdir):
         if create_dest_dirs:
@@ -174,14 +174,6 @@ def render_mako_template_to(
         else:
             raise FileNotFoundError(
                 "Dest. dir. non-existent: {}".format(outdir))
-
-    if only_update:
-        if prev_subsd == subsd and not \
-           missing_or_other_newer(outpath, template):
-            if logger:
-                msg = "Did not re-render {}. (destination newer + same dict)"
-                logger.info(msg.format(template))
-            return
 
     msg = None
     if pass_warn_string == True:
@@ -192,6 +184,15 @@ def render_mako_template_to(
     elif isinstance(pass_warn_string, basestring):
         subsd['_warning_in_the_generated_file_not_to_edit'] =\
             pass_warn_string
+
+    if only_update:
+        print(prev_subsd, subsd, prev_subsd==subsd)
+        if prev_subsd == subsd and not \
+           missing_or_other_newer(outpath, template):
+            if logger:
+                msg = "Did not re-render {}. (destination newer + same dict)"
+                logger.info(msg.format(template))
+            return
 
     if hasattr(template, 'read'):
         # set in-file handle to provided template

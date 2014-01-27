@@ -774,9 +774,6 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
             else:
                 print(msg)
             return objpath
-    if os.path.exists(objpath):
-        # make sure failed compilation kills the party..
-        os.unlink(objpath)
     runner = CompilerRunner_(
         [srcpath], objpath, inc_dirs=inc_dirs,
         run_linker=run_linker, cwd=cwd, **kwargs)

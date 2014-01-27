@@ -97,7 +97,6 @@ def CleverExtension(*args, **kwargs):
         logging.basicConfig(level=logging.DEBUG)
         vals['logger'] = logging.getLogger('CleverExtension')
 
-
     for k, v in vals.items():
         setattr(instance, k, v)
 
@@ -109,45 +108,50 @@ class clever_build_ext(build_ext.build_ext):
     build_ext class for CleverExtension
     Support for template_regexps
     """
+    def _copy_or_render_source(self, ext, f):
+        # Either render a template or copy the source
+        dirname = os.path.dirname(f)
+        filename = os.path.basename(f)
+        for pattern, target, subsd in ext.template_regexps:
+            if re.match(pattern, filename):
+                tgt = os.path.join(dirname, re.sub(
+                        pattern, target, filename))
+                rw = MetaReaderWriter('.metadata_subsd')
+                try:
+                    prev_subsd = rw.get_from_metadata_file(self.build_temp, f)
+                except FileNotFoundError:
+                    prev_subsd = None
+
+                render_mako_template_to(
+                    get_abspath(f),
+                    os.path.join(self.build_temp, tgt),
+                    subsd,
+                    only_update=ext.only_update,
+                    prev_subsd=prev_subsd,
+                    create_dest_dirs=True,
+                    logger=ext.logger)
+                rw.save_to_metadata_file(self.build_temp, f, subsd)
+                return tgt
+        else:
+            copy(f,
+                 os.path.join(self.build_temp,
+                              os.path.dirname(f)),
+                 only_update=ext.only_update,
+                 dest_is_dir=True,
+                 create_dest_dirs=True,
+                 logger=ext.logger)
+            return f
+
+
     def run(self):
         if self.dry_run: return # honor the --dry-run flag
         for ext in self.extensions:
             sources = []
+            if ext.logger: ext.logger.info("Copying/rendering sources...")
             for f in ext.sources:
-                # Either render a template or copy the source
-                dirname = os.path.dirname(f)
-                filename = os.path.basename(f)
-                for pattern, target, subsd in ext.template_regexps:
-                    if re.match(pattern, filename):
-                        tgt = os.path.join(dirname, re.sub(
-                                pattern, target, filename))
-                        rw = MetaReaderWriter('.metadata_subsd')
-                        try:
-                            prev_subsd = rw.get_from_metadata_file(self.build_temp, f)
-                        except FileNotFoundError:
-                            prev_subsd = None
+                sources.append(self._copy_or_render_source(ext, f))
 
-                        render_mako_template_to(
-                            get_abspath(f),
-                            os.path.join(self.build_temp, tgt),
-                            subsd,
-                            only_update=ext.only_update,
-                            prev_subsd=prev_subsd,
-                            create_dest_dirs=True,
-                            logger=ext.logger)
-                        rw.save_to_metadata_file(self.build_temp, f, subsd)
-                        sources.append(tgt)
-                        break
-                else:
-                    copy(f,
-                         os.path.join(self.build_temp,
-                                      os.path.dirname(f)),
-                         only_update=ext.only_update,
-                         dest_is_dir=True,
-                         create_dest_dirs=True,
-                         logger=ext.logger)
-                    sources.append(f)
-            if ext.logger: ext.logger.info("Copying files needed for build..")
+            if ext.logger: ext.logger.info("Copying build_files...")
             for f in ext.build_files:
                 copy(f, os.path.join(self.build_temp,
                                      os.path.dirname(f)),
@@ -197,10 +201,8 @@ class clever_build_ext(build_ext.build_ext):
                         os.path.dirname(self.get_ext_fullpath(ext.name)),
                         rel_dst,
                     ),
-                    logger=ext.logger,
                     only_update=ext.only_update,
-                    #dest_is_dir=True,
-                    #create_dest_dirs=True
+                    logger=ext.logger,
                 )
 
             # Link objects to a shared object
