@@ -7,7 +7,8 @@ before_install:
   - "sudo apt-get install -qq python-numpy gcc gfortran g++"
 install:
   - "pip install -r requirements.txt"
+  - "python setup.py install --user"    
 # command to run tests
-script: env PYTHONPATH=.:$PYTHONPATH py.test
+script: py.test
 notifications:
   email: false
