@@ -27,7 +27,7 @@ def run_compilation(**kwargs):
                 options=options_omp,
                 **kwargs),
         src2obj('euclid.cpp',
-                std='c++11',
+                std='c++0x',
                 options=options,
                 **kwargs),
         pyx2obj('euclid_wrapper.pyx',
