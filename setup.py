@@ -4,7 +4,7 @@
 from distutils.core import setup
 
 name_ = 'pycompilation'
-version_ = '0.2.14'
+version_ = '0.2.15'
 
 classifiers = [
     "Development Status :: 3 - Alpha",
