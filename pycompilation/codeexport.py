@@ -432,8 +432,11 @@ def make_CleverExtension_for_prebuilding_Code(
     at invocation of `setup.py build_ext` this convenience function
     makes setting up a CleverExtension easier. Use together with
     cmdclass = {'build_ext': clever_build_ext}.
+
+    files called ".metadata*" will be added to dist_files
     """
 
+    import glob
     from .util import download_files, make_dirs
     from .dist import CleverExtension
 
@@ -459,7 +462,8 @@ def make_CleverExtension_for_prebuilding_Code(
         for p in src_paths:
             if not p in build_files:
                 copy(os.path.join(srcdir, p), os.path.join(build_temp, srcdir),
-                     dest_is_dir=True, create_dest_dirs=True, logger=ext.logger)
+                     dest_is_dir=True, create_dest_dirs=True, only_update=ext.only_update,
+                     logger=ext.logger)
         dst = os.path.abspath(os.path.join(
             os.path.dirname(ext_fullpath), 'prebuilt/'))
         make_dirs(dst, logger=ext.logger)
@@ -467,11 +471,13 @@ def make_CleverExtension_for_prebuilding_Code(
             [os.path.join(srcdir, x) for x in src_paths], destdir=dst,
             cwd=build_temp, metadir=dst, only_update=True,
             logger=ext.logger, **prebuilder_kwargs)
+        glb = os.path.join(ext_fullpath, '.metadata*')
+        dist_files.extend(glob.glob(glb))
         for obj in objs:
             # Copy prebuilt objects into lib for distriubtion
             copy(os.path.join(build_temp, obj),
-                 dst, only_update=True,
-                 dest_is_dir=True, create_dest_dirs=True,
+                 dst, dest_is_dir=True, create_dest_dirs=True,
+                 only_update=ext.only_update,
                  logger=ext.logger)
         return objs
 
