@@ -26,7 +26,7 @@ The Code classes in ``pycompilation.codeexport`` use this too.
 
 License
 =======
-Open Soucrce. Released under the very permissive simplified (2-clause) BSD license. 
+Open Source. Released under the very permissive simplified (2-clause) BSD license. 
 See LICENSE.txt for further details.
 
 Examples
