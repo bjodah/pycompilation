@@ -9,6 +9,14 @@ pycompilation bundles python convenience classes and functions for performing co
 and linking on the fly from python. Developed with code-generation, compilation and
 import (meta-programming) of math related problems using the SymPy package in mind.
 
+Installation
+============
+Example using pip (modify to your own needs):
+
+    1. ``pip install --user --upgrade -r https://raw.github.com/bjodah/pycompilation/master/requirements.txt``
+    2. ``pip install --user --upgrade https://github.com/bjodah/pycompilation/archive/v0.2.16.tar.gz``
+
+
 Templating
 ==========
 
