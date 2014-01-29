@@ -14,7 +14,7 @@ Installation
 Example using pip (modify to your own needs):
 
     1. ``pip install --user --upgrade -r https://raw.github.com/bjodah/pycompilation/master/requirements.txt``
-    2. ``pip install --user --upgrade https://github.com/bjodah/pycompilation/archive/v0.2.16.tar.gz``
+    2. ``pip install --user --upgrade https://github.com/bjodah/pycompilation/archive/v0.2.17.tar.gz``
 
 
 Templating

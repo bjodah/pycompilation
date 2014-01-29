@@ -440,7 +440,8 @@ def make_CleverExtension_for_prebuilding_Code(
     from .util import download_files, make_dirs
     from .dist import CleverExtension
 
-    build_files, dist_files = [], []
+    build_files = []
+    dist_files = [(os.path.join(srcdir, x[0]), x[1]) for x in getattr(Code, 'dist_files', [])]
     for attr in ('build_files', 'templates'):
         for cf in getattr(Code, attr, []) or []:
             if not cf.startswith('prebuilt'):
