@@ -51,21 +51,21 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
         except FileNotFoundError:
             vendor = None
 
-    if vendor == 'intel':
+    if vendor.lower() == 'intel':
         if cplus:
             return (FortranCompilerRunner,
                     {'flags': ['-nofor_main', '-cxxlib']}, vendor)
         else:
             return (FortranCompilerRunner,
                     {'flags': ['-nofor_main']}, vendor)
-    elif vendor == 'cray-gnu':
+    elif vendor.lower() == 'cray-gnu':
         if cplus:
             return (CppCompilerRunner,
                     {}, vendor)
         else:
             return (FortranCompilerRunner,
                     {}, vendor)
-    elif vendor == 'gnu':
+    elif vendor.lower() == 'gnu':
         if cplus:
             return (CppCompilerRunner,
                     {'lib_options': ['fortran']}, vendor)
@@ -161,6 +161,8 @@ class CompilerRunner(object):
                     self.compiler_name])
         else:
             # Find a compiler
+            if preferred_vendor == None:
+                preferred_vendor = os.environ.get('COMPILER_VENDOR', None)
             self.compiler_name, self.compiler_binary, \
                 self.compiler_vendor = self.find_compiler(
                     preferred_vendor, metadir, self.cwd)

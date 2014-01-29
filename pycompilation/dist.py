@@ -194,7 +194,7 @@ class clever_build_ext(build_ext.build_ext):
 
             if ext.logger: ext.logger.info("Copying files needed for distribution..")
             for f, rel_dst in ext.dist_files:
-                rel_dst = rel_dst or os.path.dirname(f)
+                rel_dst = rel_dst or os.path.basename(f)
                 copy(
                     f,
                     os.path.join(
