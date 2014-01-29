@@ -458,8 +458,10 @@ def make_CleverExtension_for_prebuilding_Code(
 
         for p in src_paths:
             if not p in build_files:
-                copy(os.path.join(srcdir, p), os.path.join(build_temp, srcdir), logger=ext.logger)
-        dst = os.path.abspath(os.path.join(os.path.dirname(ext_fullpath), 'prebuilt/'))
+                copy(os.path.join(srcdir, p), os.path.join(build_temp, srcdir),
+                     dest_is_dir=True, create_dest_dirs=True, logger=ext.logger)
+        dst = os.path.abspath(os.path.join(
+            os.path.dirname(ext_fullpath), 'prebuilt/'))
         make_dirs(dst, logger=ext.logger)
         objs = compile_sources(
             [os.path.join(srcdir, x) for x in src_paths], destdir=dst,
