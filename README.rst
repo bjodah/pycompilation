@@ -43,6 +43,14 @@ You may also look at other projects which uses pycompilation:
 .. _finitediff: http://github.com/bjodah/finitediff
 .. _symvarsub: http://github.com/bjodah/symvarsub
 
+Dependencies
+============
+For the examples to work you need:
+* Cython
+* A C compiler (e.g. gcc)
+* A C++ compiler (e.g. g++)
+* A Fortran complier (e.g. gfortran)
+
 TODO
 ====
 
