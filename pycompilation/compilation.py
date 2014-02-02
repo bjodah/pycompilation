@@ -7,7 +7,7 @@ hence the compilation of source files cannot be cached
 unless doing something like what compile_sources / src2obj do.
 """
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import print_function, division, absolute_import
 
 import glob
 import os
