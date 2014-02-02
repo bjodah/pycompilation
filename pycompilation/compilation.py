@@ -7,7 +7,7 @@ hence the compilation of source files cannot be cached
 unless doing something like what compile_sources / src2obj do.
 """
 
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import, unicode_literals
 
 import glob
 import os
@@ -294,9 +294,13 @@ class CompilerRunner(object):
                 if missing_or_other_newer(self.out, src, cwd=self.cwd):
                     break
             else:
-                self.logger.info(('No source newer than {0}.'+\
-                             ' Did not compile').format(
-                                 self.out))
+                msg = ('No source newer than {0}.'+\
+                       ' Did not compile').format(
+                           self.out)
+                if self.logger:
+                    self.logger.info(msg)
+                else:
+                    print(msg)
                 return self.out
 
         self.flags = uniquify(self.flags)
