@@ -63,8 +63,8 @@ def _dummify_expr(expr, basename, symbs):
     return expr
 
 
-def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0,
-                      match_regex='(\d)'):
+def syntaxify_getitem(syntax, scode, basename, token, offset=None,
+                      dim=0, match_regex='(\d)'):
     """
 
     Arguments:
@@ -102,7 +102,7 @@ def syntaxify_getitem(syntax, scode, basename, token, offset=None, dim=0,
 class Interceptor(object):
     """
     This is a wrapper for dynamically loaded extension modules
-    which share the same same (they end of overwriting the same
+    which share the same name (they end up overwriting the same
     python object).
     """
 
@@ -118,30 +118,26 @@ class Interceptor(object):
             # Avoid singleton behaviour. (Python changes binary path
             # inplace without changing id of Python object)
             self._binary_mod = import_(self._binary_path)
-        if self._binary_mod.__file__ != self._binary_path:
-            raise RuntimeError
         return getattr(self._binary_mod, key)
 
 
 class Generic_Code(object):
     """
-
-    Regarding syntax:
-      C99 is assumed for 'C'
-      Fortran 2008 (free form) is assumed for 'F'
-
     Attributes to optionally override:
     -`syntax`: any of the supported syntaxes ('C' or 'F')
     -`tempdir_basename`: basename of tempdirs created in e.g. /tmp/
     -`_basedir` the path to the directory which relative (source)
     paths are given to
+
+    Regarding syntax:
+      C99 is assumed for 'C'
+      Fortran 2008 (free form) is assumed for 'F'
     """
 
     CompilerRunner = None # Set to compilation.CompilerRunner subclass
 
     syntax = None
     fort = False # a form of fortran code? (decisive for linking)
-    #preferred_vendor = 'gnu'
     tempdir_basename = 'generic_code'
     _basedir = None
     _cached_files = None
@@ -155,12 +151,12 @@ class Generic_Code(object):
     compile_kwargs = None # kwargs passed to CompilerRunner
 
     list_attributes = (
-        '_written_files', # Track files which are written
-        'build_files',   # Files that will be copied prior to compilation
+        '_written_files', # Track what files are written
+        'build_files',   # Files to be copied prior to compilation
         'source_files',
         'templates',
         'obj_files',
-        '_cached_files', # Files that should be removed between compilations
+        '_cached_files', # Files to be removed between compilations
     )
 
     def __init__(self, tempdir=None, save_temp=False, logger=None):
@@ -173,9 +169,10 @@ class Generic_Code(object):
         """
 
         if self.syntax == 'C':
-            self.wcode = sympy.ccode
+            self.wcode = partial(sympy.ccode, contract=False)
         elif self.syntax == 'F':
-            self.wcode = partial(sympy.fcode, source_format='free')
+            self.wcode = partial(
+                sympy.fcode, source_format='free', contract=False)
 
         self._basedir = self._basedir or '.'
 
@@ -197,11 +194,9 @@ class Generic_Code(object):
         for lstattr in self.list_attributes:
             setattr(self, lstattr, getattr(
                 self, lstattr, None) or [])
-            # if not hasattr(self, lstattr):
-            #     setattr(self, lstattr, [])
-            # else:
 
         self.compile_kwargs = self.compile_kwargs or {}
+
         # If .pyx files in self.templates, add .c file to _cached_files
         self._cached_files += [x.replace('_template','').replace(
             '.pyx','.c') for x in self.templates if x.endswith('.pyx')]
@@ -219,7 +214,8 @@ class Generic_Code(object):
         return {}
 
 
-    def as_arrayified_code(self, expr, dummy_groups=(), arrayify_groups=()):
+    def as_arrayified_code(self, expr, dummy_groups=(),
+                           arrayify_groups=(), **kwargs):
         """
         >>> self.as_arrayified_code(f(x)**2+y,
                 (DummyGroup('funcdummies', [f(x)]),))
@@ -227,8 +223,7 @@ class Generic_Code(object):
         for basename, symbols in dummy_groups:
             expr = _dummify_expr(expr, basename, symbols)
 
-        # wcode: sympy.ccode or sympy.fcode(..., source_format='free')
-        scode = self.wcode(expr)
+        scode = self.wcode(expr, **kwargs)
 
         for basename, code_tok, offset, dim in arrayify_groups:
             scode = syntaxify_getitem(
@@ -237,7 +232,8 @@ class Generic_Code(object):
         return scode
 
 
-    def get_cse_code(self, exprs, basename=None, dummy_groups=(), arrayify_groups=()):
+    def get_cse_code(self, exprs, basename=None,
+                     dummy_groups=(), arrayify_groups=()):
         """
         Get arrayified code for common subexpression.
         Arguments:
@@ -251,7 +247,8 @@ class Generic_Code(object):
 
         # Let's convert the new expressions into (arrayified) code
         cse_defs_code = [(vname, self.as_arrayified_code(
-            vexpr, dummy_groups, arrayify_groups)) for vname, vexpr in cse_defs]
+            vexpr, dummy_groups, arrayify_groups)) for \
+                         vname, vexpr in cse_defs]
         cse_exprs_code = [self.as_arrayified_code(
             x, dummy_groups, arrayify_groups) for x in cse_exprs]
         return cse_defs_code, cse_exprs_code
@@ -275,14 +272,34 @@ class Generic_Code(object):
         for path in self.templates:
             # Render templates
             srcpath = os.path.join(self._basedir, path)
-            outpath = os.path.join(self._tempdir,
-                         os.path.basename(path).replace('_template', ''))
+            outpath = os.path.join(
+                self._tempdir,
+                os.path.basename(path).replace('_template', ''))
             render_mako_template_to(srcpath, outpath, subs)
             self._written_files.append(outpath)
+
+
+    _mod = None
+    @property
+    def mod(self):
+        """
+        Cached compiled binary of the Generic_Code class,
+        if you want to clear the cache do:
+        >>> my_code_class_instance.clear_mod_cache()
+        """
+        if self._mod == None:
+            self._mod = self.compile_and_import_binary()
+        return self._mod
+
+
+    def clear_mod_cache(self):
+        self._mod = None
+
 
     def compile_and_import_binary(self):
         """
         Returnes a module instance of the extension module.
+        Consider using the `mod` property instead.
 
         Use:
         >>> mod = codeinstnc.compile_and_import_binary()
@@ -387,8 +404,10 @@ class C_Code(Generic_Code):
     syntax = 'C'
     CompilerRunner = CCompilerRunner
 
+
 class Cpp_Code(C_Code):
     CompilerRunner = CppCompilerRunner
+
 
 class F90_Code(Generic_Code):
     """
@@ -425,7 +444,8 @@ class F90_Code(Generic_Code):
 
 
 def make_CleverExtension_for_prebuilding_Code(
-        name, Code, prebuild_sources, srcdir, downloads=None, **kwargs):
+        name, Code, prebuild_sources, srcdir,
+        downloads=None, **kwargs):
     """
     If subclass of codeexport.Generic_Code needs to have some of it
     sources compiled to objects and cached in a `prebuilt/` directory
@@ -441,7 +461,8 @@ def make_CleverExtension_for_prebuilding_Code(
     from .dist import CleverExtension
 
     build_files = []
-    dist_files = [(os.path.join(srcdir, x[0]), x[1]) for x in getattr(Code, 'dist_files', [])]
+    dist_files = [(os.path.join(srcdir, x[0]), x[1]) for x \
+                  in getattr(Code, 'dist_files', [])]
     for attr in ('build_files', 'templates'):
         for cf in getattr(Code, attr, []) or []:
             if not cf.startswith('prebuilt'):
@@ -449,7 +470,8 @@ def make_CleverExtension_for_prebuilding_Code(
                 dist_files.append((os.path.join(srcdir, cf), None))
 
 
-    def prebuilder(build_temp, ext_fullpath, ext, src_paths, **prebuilder_kwargs):
+    def prebuilder(build_temp, ext_fullpath, ext,
+                   src_paths, **prebuilder_kwargs):
         build_temp = os.path.abspath(build_temp)
         if not os.path.isdir(build_temp): make_dirs(build_temp)
 
@@ -462,8 +484,10 @@ def make_CleverExtension_for_prebuilding_Code(
 
         for p in src_paths:
             if not p in build_files:
-                copy(os.path.join(srcdir, p), os.path.join(build_temp, srcdir),
-                     dest_is_dir=True, create_dest_dirs=True, only_update=ext.only_update,
+                copy(os.path.join(srcdir, p),
+                     os.path.join(build_temp, srcdir),
+                     dest_is_dir=True, create_dest_dirs=True,
+                     only_update=ext.only_update,
                      logger=ext.logger)
         dst = os.path.abspath(os.path.join(
             os.path.dirname(ext_fullpath), 'prebuilt/'))
