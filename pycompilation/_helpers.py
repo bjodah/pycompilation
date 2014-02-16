@@ -84,8 +84,9 @@ def defaultnamedtuple(name, args, defaults=(), typing=()):
         # Type checking
         for i, t in enumerate(typing):
             if not t(args[i]):
-                raise ValueError('Argument {} ({}) does not conform to'+\
-                                 ' typing requirements'.format(i, args[i]))
+                raise ValueError(
+                    'Argument {} ({}) does not conform to'+\
+                    ' typing requirements'.format(i, args[i]))
         # Construct namedtuple instance and return it
         return nt(*args)
     factory.__doc__ = nt.__doc__
@@ -125,10 +126,12 @@ def line_cont_after_delim(ctx, s, line_len=40, delim=(',',),
         if t in delim:
             if i > line_len:
                 if last == -1:
-                    raise ValueError('No delimiter until already past line_len')
+                    raise ValueError(
+                        'No delimiter until already past line_len')
                 i = last
-                return s[:i+1] + line_cont_token + '\n ' + line_cont_after_delim(
-                    ctx, s[i+1:], line_len, delim)
+                return s[:i+1] + line_cont_token + '\n ' + \
+                    line_cont_after_delim(
+                        ctx, s[i+1:], line_len, delim)
             last = i
     return s
 
