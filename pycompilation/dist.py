@@ -14,13 +14,6 @@ from .compilation import extension_mapping, FortranCompilerRunner, CppCompilerRu
 from .util import copy, get_abspath, render_mako_template_to, import_, MetaReaderWriter
 from ._helpers import FileNotFoundError
 
-# def is_fortran_file(src):
-#     name, ext = os.path.splitext(src)
-#     key = ext.lower()
-#     if key in extension_mapping:
-#         if extension_mapping[key][0] == FortranCompilerRunner:
-#             return True
-#     return False
 
 def _any_X(srcs, cls):
     for src in srcs:
@@ -31,30 +24,13 @@ def _any_X(srcs, cls):
                 return True
     return False
 
+
 def any_fort(srcs):
     return _any_X(srcs, FortranCompilerRunner)
 
+
 def any_cplus(srcs):
     return _any_X(srcs, CppCompilerRunner)
-
-
-# def _scan_for_tokens(src, tokens):
-#     for line in open(src, 'rt'):
-#         lower_line = line.lower()
-#         if any([x in lower_line for x in tokens]):
-#             return True
-#     return False
-
-# def uses_openmp(src):
-#     if is_fortran_file(src):
-#         tokens = ('$!omp ',)
-#     else: # C / C++
-#         tokens = ('#pragma omp ', '#include <omp.h>', '#include <omp>')
-#     return _scan_for_tokens(src, tokens)
-
-# def uses_lapack(src):
-#     if is_fortran_file(src):
-#         tokens = ()
 
 
 def CleverExtension(*args, **kwargs):

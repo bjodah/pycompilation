@@ -7,8 +7,8 @@ import shutil
 from collections import namedtuple
 from hashlib import md5
 
-
 from ._helpers import FileNotFoundError
+
 
 def expand_collection_in_dict(d, key, new_items, no_duplicates=True):
     if key in d:
@@ -24,8 +24,10 @@ def expand_collection_in_dict(d, key, new_items, no_duplicates=True):
     else:
         d[key] = new_items
 
+
 Glob = namedtuple('Glob', 'pathname')
 ArbitraryDepthGlob = namedtuple('ArbitraryDepthGlob', 'filename')
+
 
 def glob_at_depth(filename_glob, cwd=None):
     if cwd == None: cwd = '.'
@@ -35,6 +37,7 @@ def glob_at_depth(filename_glob, cwd=None):
             if fnmatch.fnmatch(fn, filename_glob):
                 globbed.append(os.path.join(root, fn))
     return globbed
+
 
 def term_fmt(s, fg=('red','black')):
     """
@@ -64,6 +67,7 @@ def get_abspath(path, cwd=None):
         return os.path.abspath(
             os.path.join(cwd, path)
         )
+
 
 def make_dirs(path, logger=None):
     if path[-1] == '/':
@@ -186,7 +190,6 @@ def render_mako_template_to(
             pass_warn_string
 
     if only_update:
-        print(prev_subsd, subsd, prev_subsd==subsd)
         if prev_subsd == subsd and not \
            missing_or_other_newer(outpath, template):
             if logger:
@@ -334,28 +337,3 @@ def download_files(websrc, files, md5sums, cwd=None,
                 ("Warning: MD5 sum of {0} differs from that provided"+\
                  " in setup.py. i.e. {1} vs. {2}").format(
                      f, fmd5, md5sums[f]))
-
-# def callback_on_regexp_path(path, regexp_tuples, default):
-#     dirname = os.path.dirname(path)
-#     filename = os.path.basename(path)
-#     for pattern, target, cb, args, kwargs in regexp_tuples:
-#         if re.match(pattern, filename):
-#             tgt = os.path.join(dirname, re.sub(
-#                     pattern, target, filename))
-#             cb(get_abspath(path),
-#                *args,
-#                **kwargs,
-#                os.path.join(self.build_temp, tgt),
-#                subsd,
-#                only_update=True,
-#                create_dest_dirs=True)
-#             sources.append(tgt)
-#             print(tgt)
-#             break
-#     else:
-#         copy(f,
-#              os.path.join(self.build_temp,
-#                           os.path.dirname(f)),
-#              dest_is_dir=True,
-#              create_dest_dirs=True)
-#         sources.append(f)

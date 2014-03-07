@@ -46,10 +46,10 @@ You may also look at other projects which uses pycompilation:
 Dependencies
 ============
 For the examples to work you need:
-* Cython
-* A C compiler (e.g. gcc)
-* A C++ compiler (e.g. g++)
-* A Fortran complier (e.g. gfortran)
+ - Cython
+ - A C compiler (e.g. gcc)
+ - A C++ compiler (e.g. g++)
+ - A Fortran complier (e.g. gfortran)
 
 TODO
 ====
