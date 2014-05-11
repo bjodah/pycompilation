@@ -4,7 +4,7 @@
 from distutils.core import setup
 
 name_ = 'pycompilation'
-version_ = '0.2.19'
+version_ = '0.2.20-dev'
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -13,6 +13,7 @@ classifiers = [
     "Operating System :: POSIX",
     "Programming Language :: Python",
     "Programming Language :: C",
+    "Programming Language :: C++",
     "Programming Language :: Cython",
     "Programming Language :: Fortran",
     "Topic :: Software Development :: Code Generators",
