@@ -325,6 +325,7 @@ def import_(filename, only_if_newer_than=None):
 
 def download_files(websrc, files, md5sums, cwd=None,
                    only_if_missing=True, logger=None):
+    dest_paths = []
     for f in files:
         fpath = os.path.join(cwd, f) if cwd else f
         if not os.path.exists(fpath):
@@ -341,3 +342,5 @@ def download_files(websrc, files, md5sums, cwd=None,
                 ("Warning: MD5 sum of {0} differs from that provided"+\
                  " in setup.py. i.e. {1} vs. {2}").format(
                      f, fmd5, md5sums[f]))
+        dest_paths.append(get_abspath(fpath, cwd=cwd))
+    return dest_paths
