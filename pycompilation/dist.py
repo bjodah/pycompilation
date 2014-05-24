@@ -188,7 +188,8 @@ class clever_build_ext(build_ext.build_ext):
                     cwd=self.build_temp,
                     flags=ext.extra_link_args,
                     fort=any_fort(sources),
-                    cplus=ext.language.lower() == 'c++' or any_cplus(sources),
+                    cplus=(((ext.language or '').lower() == 'c++') or
+                           any_cplus(sources)),
                     logger=ext.logger,
                     only_update=ext.only_update,
                     **ext.pycompilation_link_kwargs
