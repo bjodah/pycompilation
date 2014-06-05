@@ -136,15 +136,15 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
 
     if only_update:
         if not missing_or_other_newer(dst, src):
+            if logger: logger.debug("Did not copy {} to {} (source not newer)".format(src, dst))
             return
-
-    if logger: logger.debug("Copying {} to {}".format(src, dst))
 
     if os.path.islink(dst):
         if os.path.abspath(os.path.realpath(dst)) == \
            os.path.abspath(dst):
             pass # destination is a symlic pointing to src
     else:
+        if logger: logger.debug("Copying {} to {}".format(src, dst))
         shutil.copy(src, dst)
         if copystat:
             shutil.copystat(src, dst)
@@ -237,12 +237,16 @@ def md5_of_file(path, nblocks=128):
 
 
 def missing_or_other_newer(path, other_path, cwd=None):
+    """
+    Newer (or same time stamp)
+    """
     cwd = cwd or '.'
     path = get_abspath(path, cwd=cwd)
     other_path = get_abspath(other_path, cwd=cwd)
     if not os.path.exists(path):
         return True
-    if os.path.getmtime(other_path) > os.path.getmtime(path):
+    if os.path.getmtime(other_path) - 1e-6 >= os.path.getmtime(path):
+        # 1e-6 is needed beacuse http://stackoverflow.com/questions/17086426/
         return True
     return False
 
@@ -321,6 +325,7 @@ def import_(filename, only_if_newer_than=None):
 
 def download_files(websrc, files, md5sums, cwd=None,
                    only_if_missing=True, logger=None):
+    dest_paths = []
     for f in files:
         fpath = os.path.join(cwd, f) if cwd else f
         if not os.path.exists(fpath):
@@ -337,3 +342,5 @@ def download_files(websrc, files, md5sums, cwd=None,
                 ("Warning: MD5 sum of {0} differs from that provided"+\
                  " in setup.py. i.e. {1} vs. {2}").format(
                      f, fmd5, md5sums[f]))
+        dest_paths.append(get_abspath(fpath, cwd=cwd))
+    return dest_paths

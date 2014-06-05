@@ -479,11 +479,13 @@ def make_CleverExtension_for_prebuilding_Code(
             websrc, src_md5 = downloads
             download_dir = os.path.join(build_temp, srcdir)
             if not os.path.isdir(download_dir): make_dirs(download_dir)
-            download_files(websrc, src_md5.keys(), src_md5,
+            downloaded_paths = download_files(websrc, src_md5.keys(), src_md5,
                            cwd=download_dir, logger=ext.logger)
+        else:
+            downloaded_paths = []
 
         for p in src_paths:
-            if not p in build_files:
+            if not p in build_files or not p in downloaded_paths:
                 copy(os.path.join(srcdir, p),
                      os.path.join(build_temp, srcdir),
                      dest_is_dir=True, create_dest_dirs=True,

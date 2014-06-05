@@ -42,7 +42,6 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
                             cwd=None):
     vendor = vendor or os.environ.get('COMPILER_VENDOR', None)
 
-
     if not vendor:
         metadir = get_abspath(metadir or '.', cwd=cwd)
         reader = MetaReaderWriter('.metadata_CompilerRunner')

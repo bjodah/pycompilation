@@ -4,24 +4,15 @@ import glob
 import os
 import subprocess
 
+import pytest
 
-def run_example(pypath):
+
+tests = glob.glob(os.path.join(os.path.dirname(__file__), '../*_main.py'))
+
+
+@pytest.mark.parametrize('pypath', tests)
+def test_examples(pypath):
     p = subprocess.Popen(
         ['python', pypath, 'clean'],
-        cwd=os.path.join(os.path.dirname(__file__),'..'))
+        cwd=os.path.join(os.path.dirname(__file__), '..'))
     assert p.wait() == 0 # SUCCESS==0
-
-
-def test_elemwise():
-    run_example(os.path.join(
-        os.path.dirname(__file__), '..', 'elemwise_main.py'))
-
-
-def test_euclid():
-    run_example(os.path.join(
-        os.path.dirname(__file__), '..', 'euclid_main.py'))
-
-
-def test_mtxmul():
-    run_example(os.path.join(
-        os.path.dirname(__file__), '..', 'mtxmul_main.py'))
