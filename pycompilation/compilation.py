@@ -135,7 +135,7 @@ class CompilerRunner(object):
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
                  lib_dirs=None, std=None, options=None, defmacros=None,
                  undefmacros=None,logger=None, preferred_vendor=None,
-                 metadir=None, lib_options=None, only_update=False):
+                 metadir=None, lib_options=None, only_update=False, **kwargs):
         """
         Arguments:
         - `preferred_vendor`: key of compiler_dict
@@ -177,6 +177,8 @@ class CompilerRunner(object):
         self.lib_dirs = lib_dirs or []
         self.options = options or self.default_compile_options
         self.std = std or self.standards[0]
+        self.Olevel = kwargs.get('Olevel', None)
+        self.march = kwargs.get('march', None)
         self.lib_options = lib_options or []
         self.logger = logger
         self.only_update = only_update
@@ -266,8 +268,18 @@ class CompilerRunner(object):
         The command below covers most cases, if you need
         someting more complex subclass this.
         """
+
+        kw_options = []
+        for kw, base in [('Olevel', '-O'), ('march', '-march=')]:
+            if any([f.startswith(base) for f in self.flags]):
+                continue  # let self.flags override kw options (good idea?)
+            val = getattr(self, kw, None)
+            if val is not None:
+                kw_options.append(base+val)
+
         cmd = [self.compiler_binary] +\
               self.flags + \
+              kw_options + \
               ['-U'+x for x in self.undefmacros] +\
               ['-D'+x for x in self.defmacros] +\
               ['-I'+x for x in self.inc_dirs] +\

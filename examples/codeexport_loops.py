@@ -58,6 +58,7 @@ class ExampleCode(C_Code):
         'codeexport_loops.o',
         'codeexport_loops_wrapper.o',
     ]
+    compile_kwargs = {'std': 'c99'}
 
     def __init__(self, eqs, inputs, indices, **kwargs):
         self.unk = [x.lhs for x in eqs]
