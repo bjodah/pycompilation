@@ -95,7 +95,7 @@ class clever_build_ext(build_ext.build_ext):
                 rw = MetaReaderWriter('.metadata_subsd')
                 try:
                     prev_subsd = rw.get_from_metadata_file(self.build_temp, f)
-                except FileNotFoundError:
+                except (FileNotFoundError, KeyError):
                     prev_subsd = None
 
                 render_mako_template_to(
