@@ -7,7 +7,9 @@ hence the compilation of source files cannot be cached
 unless doing something like what compile_sources / src2obj do.
 """
 
-from __future__ import print_function, division, absolute_import
+from __future__ import print_function, division, absolute_import, unicode_literals
+from future.builtins import (bytes, str, open, super, range,
+                             zip, round, input, int, pow, object)
 
 import glob
 import os
@@ -184,7 +186,7 @@ class CompilerRunner(object):
         self.run_linker = run_linker
         if self.run_linker:
             # both gnu and intel compilers use '-c' for disabling linker
-            self.flags = filter(lambda x: x != '-c', self.flags)
+            self.flags = list(filter(lambda x: x != '-c', self.flags))
         else:
             if not '-c' in self.flags:
                 self.flags.append('-c')
@@ -240,7 +242,7 @@ class CompilerRunner(object):
                 used_metafile = True
             except FileNotFoundError:
                 pass
-        candidates = cls.compiler_dict.keys()
+        candidates = list(cls.compiler_dict.keys())
         if preferred_vendor:
             if preferred_vendor in candidates:
                 candidates = [preferred_vendor]+candidates
@@ -336,7 +338,7 @@ class CompilerRunner(object):
                              stderr=subprocess.STDOUT,
                              env=env,
         )
-        self.cmd_outerr = p.communicate()[0]
+        self.cmd_outerr = p.communicate()[0].decode('utf-8')
         self.cmd_returncode = p.returncode
 
         # Error handling
@@ -344,11 +346,11 @@ class CompilerRunner(object):
             msg = "Error executing '{0}' in {1}. Command exited with status {2}"+\
                   " after givning the following output: {3}\n"
             raise CompilationError(msg.format(
-                ' '.join(self.cmd()), self.cwd, self.cmd_returncode,
-                str(self.cmd_outerr)))
+                u' '.join(self.cmd()), self.cwd, str(self.cmd_returncode),
+                self.cmd_outerr))
 
-        if self.logger and self.cmd_outerr: self.logger.info(
-                '...with output:\n'+self.cmd_outerr)
+        if self.logger and len(self.cmd_outerr) > 0:
+            self.logger.info(u'...with output:\n'+self.cmd_outerr)
 
         return self.cmd_outerr, self.cmd_returncode
 
@@ -464,7 +466,7 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
                 fltr = _mk_flag_filter(key)
                 keys, values = zip(*self.option_flag_dict[key].items())
                 new_option_flag_dict[key].update(dict(zip(
-                    keys, filter(fltr, values))))
+                    keys, list(filter(fltr, values)))))
         self.option_flag_dict = new_option_flag_dict
         super(CppCompilerRunner, self).__init__(*args, **kwargs)
 
@@ -677,13 +679,13 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
     compilername, flags = cc.split()[0], cc.split()[1:]
 
     # Grab inc_dirs
-    inc_dirs += filter(lambda x: x.startswith('-I'), flags)
-    flags = filter(lambda x: not x.startswith('-I'), flags)
+    inc_dirs += list(filter(lambda x: x.startswith('-I'), flags))
+    flags = list(filter(lambda x: not x.startswith('-I'), flags))
 
     # Grab lib_dirs
     lib_dirs += [x[2:] for x in filter(
         lambda x: x.startswith('-L'), flags)]
-    flags = filter(lambda x: not x.startswith('-L'), flags)
+    flags = list(filter(lambda x: not x.startswith('-L'), flags))
 
     flags.extend(kwargs.pop('flags',[]))
 

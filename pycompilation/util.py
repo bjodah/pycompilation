@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function, division, absolute_import, unicode_literals
+
 import fnmatch
 import os
 import pickle
@@ -270,7 +272,7 @@ class HasMetaData(object):
         """
         fullpath = os.path.join(dirpath, cls.metadata_filename)
         if os.path.exists(fullpath):
-            d = pickle.load(open(fullpath,'r'))
+            d = pickle.load(open(fullpath, 'rb'))
             return d[key] #.get(cls._get_metadata_key(key), None)
         else:
             raise FileNotFoundError(
@@ -283,11 +285,11 @@ class HasMetaData(object):
         """
         fullpath = os.path.join(dirpath, cls.metadata_filename)
         if os.path.exists(fullpath):
-            d = pickle.load(open(fullpath,'r'))
+            d = pickle.load(open(fullpath, 'rb'))
             d.update({key: value})
-            pickle.dump(d, open(fullpath,'w'))
+            pickle.dump(d, open(fullpath, 'wb'))
         else:
-            pickle.dump({key: value}, open(fullpath,'w'))
+            pickle.dump({key: value}, open(fullpath, 'wb'))
 
 
 def MetaReaderWriter(filename):

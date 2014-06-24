@@ -4,8 +4,11 @@
 Interaction with distutils
 """
 
+import base64
 import os
 import re
+import tempfile
+import uuid
 
 from distutils.command import build_ext
 from distutils.extension import Extension
@@ -242,3 +245,20 @@ def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
             **link_kwargs)
         mod = import_(so)
     return mod
+
+
+def compile_link_import_strings(codes, name=None, **kwargs):
+    name = name or "_" + base64.b32encode(uuid.uuid4().bytes).decode().strip("=")
+    build_dir = tempfile.mkdtemp(name)
+    source_files = []
+    if kwargs.get('logger', False) is True:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        kwargs['logger'] = logging.getLogger('name')
+
+    for name, code_ in codes:
+        dest = os.path.join(build_dir, name)
+        with open(dest, 'wt') as fh:
+            fh.write(code_)
+            source_files.append(dest)
+    return compile_link_import_py_ext(source_files, build_dir=build_dir, **kwargs)
