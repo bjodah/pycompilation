@@ -1,4 +1,5 @@
 // ${_warning_in_the_generated_file_not_to_edit}
+// compile using e.g.: gcc -fopenmp -std=c99 -O3 -mtune=native -funroll-loops -c elemwise.c
 
 <%doc>
   mako template of C99 source
@@ -21,10 +22,10 @@ void c_elem${opname}_${ctype}(
       z[i] = ${opformater('a[i]','b[i]')};
     }
 }
+
 %endfor
 
 // SSE2:
-
 %for (opname, opformater, vec_opformater), (ctype, nptype, vectype, vecsize) in combos:
 %if vec_opformater != None:
 void c_vec${opname}_${ctype}(
@@ -45,5 +46,6 @@ void c_vec${opname}_${ctype}(
     for (${idxtype} i=0; i < N % ${vecsize}; ++i)
       z[N-1-i] = ${opformater('a[N-1-i]','b[N-1-i]')};
 }
+
 %endif
 %endfor

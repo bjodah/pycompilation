@@ -4,17 +4,12 @@ import numpy as np
 cimport numpy as cnp
 
 %for (opname, opfmt, vec_opfmt), (ctype, nptype, vectype, vecsize) in combos:
-cdef extern void c_elem${opname}_${ctype}(const ${idxtype} N,
-                                     const ${ctype}* a,
-                                     const ${ctype}* b,
+cdef extern void c_elem${opname}_${ctype}(
+    const ${idxtype} N, const ${ctype}* a, const ${ctype}* b, ${ctype}* z)
 
-                                     ${ctype}* z)
 %if vec_opfmt != None:
-cdef extern void c_vec${opname}_${ctype}(const ${idxtype} N,
-                                     const ${ctype}* a,
-                                     const ${ctype}* b,
-
-                                     ${ctype}* z)
+cdef extern void c_vec${opname}_${ctype}(
+    const ${idxtype} N, const ${ctype}* a, const ${ctype}* b, ${ctype}* z)
 %endif
 %endfor
 
@@ -45,10 +40,7 @@ cdef cnp.ndarray[cnp.${nptype}_t, ndim=1] _elem${opname}_${ctype}(${ctype} [:] a
                                ${ctype} [:] b):
     cdef cnp.ndarray[cnp.${nptype}_t, ndim=1] c = np.empty_like(
         a, dtype=np.${nptype})
-    c_elem${opname}_${ctype}(a.shape[0],
-                                 &a[0],
-                                 &b[0],
-                                 &c[0])
+    c_elem${opname}_${ctype}(a.shape[0], &a[0], &b[0], &c[0])
     return c
 
 %if vec_opfmt != None:
@@ -56,10 +48,7 @@ cdef cnp.ndarray[cnp.${nptype}_t, ndim=1] _vec${opname}_${ctype}(${ctype} [:] a,
                                ${ctype} [:] b):
     cdef cnp.ndarray[cnp.${nptype}_t, ndim=1] c = np.empty_like(
         a, dtype=np.${nptype})
-    c_vec${opname}_${ctype}(a.shape[0],
-                                 &a[0],
-                                 &b[0],
-                                 &c[0])
+    c_vec${opname}_${ctype}(a.shape[0], &a[0], &b[0], &c[0])
     return c
 %endif
 %endfor
