@@ -67,7 +67,7 @@ def generate_code(tempd):
         ('pow', mk_call_opformater('pow'), None),
     ]
 
-    types = zip(ctypes, nptypes, vectypes, vecsizes)
+    types = list(zip(ctypes, nptypes, vectypes, vecsizes))
     combos = list(product(ops, types))
     if not os.path.exists(tempd):
         os.mkdir(tempd)

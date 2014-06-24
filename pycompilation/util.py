@@ -210,7 +210,7 @@ def render_mako_template_to(
 
     kwargs_Template = {'input_encoding': 'utf-8', 'output_encoding': 'utf-8'}
     kwargs_Template.update(kwargs)
-    with open(outpath, 'wt') as ofh:
+    with open(outpath, 'wb') as ofh:
         from mako.template import Template
         from mako.exceptions import text_error_template
         try:
