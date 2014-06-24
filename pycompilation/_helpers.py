@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function, division, absolute_import, unicode_literals
+from future.builtins import (bytes, str, open, super, range,
+                             zip, round, input, int, pow, object)
+
 import os
 
 from collections import namedtuple
@@ -60,7 +66,7 @@ def defaultnamedtuple(name, args, defaults=(), typing=()):
     {'density': 1.0, 'x': 10, 'y': 5, 'z': 3}
     """
     nt = namedtuple(name, args)
-    kw_order = args.split() if isinstance(args, basestring) else args
+    kw_order = args.split() if isinstance(args, (str, bytes)) else args
     nargs = len(kw_order)
 
     # Sanity check that `defaults` conform to typing

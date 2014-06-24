@@ -9,7 +9,7 @@ import tempfile
 import time
 
 from itertools import product
-from operator import add, mul, sub, div, pow
+from operator import add, mul, sub, truediv, pow
 
 import numpy as np
 
@@ -63,7 +63,7 @@ def generate_code(tempd):
         ('add', mk_symbol_opformater('+'), mk_cond_call_opformater('_mm_add_p', mapping)),
         ('sub', mk_symbol_opformater('-'), mk_cond_call_opformater('_mm_sub_p', mapping)),
         ('mul', mk_symbol_opformater('*'), mk_cond_call_opformater('_mm_mul_p', mapping)),
-        ('div', mk_symbol_opformater('/'), mk_cond_call_opformater('_mm_div_p', mapping)),
+        ('truediv', mk_symbol_opformater('/'), mk_cond_call_opformater('_mm_div_p', mapping)),
         ('pow', mk_call_opformater('pow'), None),
     ]
 
