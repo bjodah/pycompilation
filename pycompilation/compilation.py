@@ -13,9 +13,10 @@ from future.builtins import (bytes, str, open, super, range,
 
 import glob
 import os
-import subprocess
-import shutil
 import re
+import shutil
+import subprocess
+import sys
 
 from .util import (
     HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
@@ -336,9 +337,12 @@ class CompilerRunner(object):
                              stdin= subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
-                             env=env,
-        )
-        self.cmd_outerr = p.communicate()[0].decode('utf-8')
+                             env=env)
+        comm = p.communicate()
+        try:
+            self.cmd_outerr = comm[0].decode('utf-8')
+        except UnicodeDecodeError:
+            self.cmd_outerr = comm[0].decode('iso-8859-1')  # win32
         self.cmd_returncode = p.returncode
 
         # Error handling
@@ -671,9 +675,16 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
     from distutils.sysconfig import get_config_vars
     inc_dirs = kwargs.pop('inc_dirs', [])
     lib_dirs = kwargs.pop('lib_dirs', [])
-    libs += [x[2:] for x in get_config_vars(
-        'BLDLIBRARY')[0].split() if x.startswith('-l')]
-    cc = get_config_vars('BLDSHARED')[0]
+
+    # Anaconda Win 32 returns a very terse dict from:
+    # get_config_vars(), hence we are (arbitrarily assuming mingw32
+    # in order to at least have a small chance of build succeeding)
+
+    BLDLIBRARY = get_config_vars('BLDLIBRARY')[0] or (
+    '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
+    BLDSHARED = get_config_vars('BLDSHARED')[0] or 'gcc -shared'
+    libs += [x[2:] for x in BLDLIBRARY.split() if x.startswith('-l')]
+    cc = BLDSHARED
 
     # We want something like: gcc, ['-pthread', ...
     compilername, flags = cc.split()[0], cc.split()[1:]
