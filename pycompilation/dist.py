@@ -13,8 +13,14 @@ import uuid
 from distutils.command import build_ext
 from distutils.extension import Extension
 
-from .compilation import extension_mapping, FortranCompilerRunner, CppCompilerRunner, compile_sources, link_py_so
-from .util import copy, get_abspath, render_mako_template_to, import_, MetaReaderWriter
+from .compilation import (
+    extension_mapping, FortranCompilerRunner, CppCompilerRunner,
+    compile_sources, link_py_so
+)
+from .util import (
+    copy, get_abspath, render_mako_template_to, import_module_from_file,
+    MetaReaderWriter
+)
 from ._helpers import FileNotFoundError
 
 
@@ -38,20 +44,23 @@ def any_cplus(srcs):
 
 def CleverExtension(*args, **kwargs):
     """
-    Arguments:
-    -`template_regexps`: [(pattern1, target1, subsd1), ...] to generate templated code
-    -`pass_extra_compile_args`: True/False, default: False, should ext.extra_compile_args be
-        passed along?
+    Parameters
+    ==========
+    template_regexps: list of 3-tuples
+        e.g. [(pattern1, target1, subsd1), ...], used to generate
+        templated code
+    pass_extra_compile_args: bool
+        should ext.extra_compile_args be passed along? default: False
     """
     vals = {}
 
     intercept = {
-        'build_callbacks': (), # tuple of (callback, args, kwargs)
+        'build_callbacks': (),  # tuple of (callback, args, kwargs)
         'link_ext': True,
         'build_files': (),
-        'dist_files': (), # work around stackoverflow.com/questions/2994396/
+        'dist_files': (),  # work around stackoverflow.com/questions/2994396/
         'template_regexps': [],
-        'pass_extra_compile_args': False, # use distutils extra_compile_args?
+        'pass_extra_compile_args': False,  # use distutils extra_compile_args?
         'pycompilation_compile_kwargs': {},
         'pycompilation_link_kwargs': {},
     }
@@ -70,7 +79,7 @@ def CleverExtension(*args, **kwargs):
 
     instance = Extension(*args, **kwargs)
 
-    if vals['logger'] == True:
+    if vals['logger'] is True:
         # interpret as we should instantiate a logger
         import logging
         logging.basicConfig(level=logging.DEBUG)
@@ -94,7 +103,7 @@ class clever_build_ext(build_ext.build_ext):
         for pattern, target, subsd in ext.template_regexps:
             if re.match(pattern, filename):
                 tgt = os.path.join(dirname, re.sub(
-                        pattern, target, filename))
+                    pattern, target, filename))
                 rw = MetaReaderWriter('.metadata_subsd')
                 try:
                     prev_subsd = rw.get_from_metadata_file(self.build_temp, f)
@@ -121,16 +130,18 @@ class clever_build_ext(build_ext.build_ext):
                  logger=ext.logger)
             return f
 
-
     def run(self):
-        if self.dry_run: return # honor the --dry-run flag
+        if self.dry_run:
+            return  # honor the --dry-run flag
         for ext in self.extensions:
             sources = []
-            if ext.logger: ext.logger.info("Copying/rendering sources...")
+            if ext.logger:
+                ext.logger.info("Copying/rendering sources...")
             for f in ext.sources:
                 sources.append(self._copy_or_render_source(ext, f))
 
-            if ext.logger: ext.logger.info("Copying build_files...")
+            if ext.logger:
+                ext.logger.info("Copying build_files...")
             for f in ext.build_files:
                 copy(f, os.path.join(self.build_temp,
                                      os.path.dirname(f)),
@@ -147,11 +158,11 @@ class clever_build_ext(build_ext.build_ext):
                     ext.extra_compile_args,
             if ext.define_macros:
                 ext.pycompilation_compile_kwargs['defmacros'] =\
-                    list(set(ext.define_macros+\
+                    list(set(ext.define_macros +
                              ext.pycompilation_compile_kwargs['defmacros']))
             if ext.undef_macros:
                 ext.pycompilation_compile_kwargs['undefmacros'] =\
-                    list(set(ext.undef_macros+\
+                    list(set(ext.undef_macros +
                              ext.pycompilation_compile_kwargs['undefmacros']))
 
             # Run build_callbaks if any were provided
@@ -171,7 +182,9 @@ class clever_build_ext(build_ext.build_ext):
                 **ext.pycompilation_compile_kwargs
             )
 
-            if ext.logger: ext.logger.info("Copying files needed for distribution..")
+            if ext.logger:
+                ext.logger.info(
+                    "Copying files needed for distribution..")
             for f, rel_dst in ext.dist_files:
                 rel_dst = rel_dst or os.path.basename(f)
                 copy(
@@ -197,13 +210,16 @@ class clever_build_ext(build_ext.build_ext):
                     only_update=ext.only_update,
                     **ext.pycompilation_link_kwargs
                 )
-                copy(abs_so_path, self.get_ext_fullpath(
-                    ext.name), only_update=ext.only_update,
-                     create_dest_dirs=True, logger=ext.logger)
+                copy(
+                    abs_so_path, self.get_ext_fullpath(ext.name),
+                    only_update=ext.only_update,
+                    create_dest_dirs=True, logger=ext.logger
+                )
 
 
-def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
-                               compile_kwargs=None, link_kwargs=None, **kwargs):
+def compile_link_import_py_ext(
+        srcs, extname=None, build_dir=None, compile_kwargs=None,
+        link_kwargs=None, **kwargs):
     """
     Compiles sources in `srcs` to a shared object (python extension)
     which is imported. If shared object is newer than the sources, they
@@ -216,17 +232,19 @@ def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
     -`build_dir`: path to directory in which objects files etc. are generated
     -`compile_kwargs`: dict, keyword arguments passed to compile_sources
     -`link_kwargs`: dict, keyword arguments passed to link_py_so
-    -`kwargs`: additional keyword arguments overwrites to both compile_kwargs and link_kwargs
+    -`kwargs`: additional keyword arguments overwrites to both compile_kwargs
+         and link_kwargs
          useful for convenience e.g. when passing logger
     Returns:
     - the imported module
 
     Example:
-    >>> mod = compile_link_import_py_ext(['fft.f90', 'convolution.cpp', 'fft_wrapper.pyx'])
+    >>> mod = compile_link_import_py_ext(['fft.f90', 'convolution.cpp',
+        'fft_wrapper.pyx'])
     >>> Aprim = mod.fft(A)
     """
     build_dir = build_dir or '.'
-    if extname == None:
+    if extname is None:
         extname = os.path.splitext(os.path.basename(srcs[-1]))[0]
 
     compile_kwargs = compile_kwargs or {}
@@ -236,19 +254,20 @@ def compile_link_import_py_ext(srcs, extname=None, build_dir=None,
     link_kwargs.update(kwargs)
 
     try:
-        mod = import_(os.path.join(build_dir, extname), srcs)
+        mod = import_module_from_file(os.path.join(build_dir, extname), srcs)
     except ImportError:
         objs = compile_sources(map(get_abspath, srcs), destdir=build_dir,
                                cwd=build_dir, **compile_kwargs)
         so = link_py_so(
             objs, cwd=build_dir, fort=any_fort(srcs), cplus=any_cplus(srcs),
             **link_kwargs)
-        mod = import_(so)
+        mod = import_module_from_file(so)
     return mod
 
 
 def compile_link_import_strings(codes, name=None, **kwargs):
-    name = name or "_" + base64.b32encode(uuid.uuid4().bytes).decode().strip("=")
+    name = name or "_" + base64.b32encode(
+        uuid.uuid4().bytes).decode().strip("=")
     build_dir = tempfile.mkdtemp(name)
     source_files = []
     if kwargs.get('logger', False) is True:
@@ -261,4 +280,5 @@ def compile_link_import_strings(codes, name=None, **kwargs):
         with open(dest, 'wt') as fh:
             fh.write(code_)
             source_files.append(dest)
-    return compile_link_import_py_ext(source_files, build_dir=build_dir, **kwargs)
+    return compile_link_import_py_ext(
+        source_files, build_dir=build_dir, **kwargs)

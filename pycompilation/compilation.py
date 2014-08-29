@@ -7,7 +7,9 @@ hence the compilation of source files cannot be cached
 unless doing something like what compile_sources / src2obj do.
 """
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import (
+    print_function, division, absolute_import, unicode_literals
+)
 from future.builtins import (bytes, str, open, super, range,
                              zip, round, input, int, pow, object)
 
@@ -28,7 +30,7 @@ from ._helpers import (
     CompilationError, FileNotFoundError, pyx_is_cplus
 )
 
-if os.name == 'posix': # Future improvement to make cross-platform
+if os.name == 'posix':  # Future improvement to make cross-platform
     flagprefix = '-'
     objext = '.o'
     sharedext = '.so'
@@ -38,7 +40,6 @@ elif os.name == 'nt':
     sharedext = '.dll'
 else:
     raise ImportError("Unknown os.name: {}".format(os.name))
-
 
 
 def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
@@ -80,14 +81,15 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
 
 class CompilerRunner(object):
 
-    compiler_dict = None # Subclass to vendor/binary dict
+    compiler_dict = None  # Subclass to vendor/binary dict
 
-    standards = None # Subclass to a tuple of supported standards
-                     # (first one will be the default)
+    # Standards should be a tuple of supported standards
+    # (first one will be the default)
+    standards = None
 
-    std_formater = None # Subclass to dict of binary/formater-callback
+    std_formater = None  # Subclass to dict of binary/formater-callback
 
-    option_flag_dict = None # Lazy unified defaults for compilers
+    option_flag_dict = None  # Lazy unified defaults for compilers
     metadata_filename = '.metadata_CompilerRunner'
 
     # subclass to be e.g. {'gcc': 'gnu', ...}
@@ -110,10 +112,10 @@ class CompilerRunner(object):
                 # 'inc_dirs': ['${MKLROOT}/include/intel64/lp64',
                 #              '${MKLROOT}/include'],
                 # 'flags': ['-openmp'],
-                'linkline': ['-Wl,--start-group '+\
-                             ' ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a'+\
-                             ' ${MKLROOT}/lib/intel64/libmkl_core.a'+\
-                             ' ${MKLROOT}/lib/intel64/libmkl_intel_thread.a'+\
+                'linkline': ['-Wl,--start-group ' +
+                             ' ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a' +
+                             ' ${MKLROOT}/lib/intel64/libmkl_core.a' +
+                             ' ${MKLROOT}/lib/intel64/libmkl_intel_thread.a' +
                              ' -Wl,--end-group'],
                 'libs': ['pthread', 'm'],
                 'lib_dirs': ['${MKLROOT}/lib/intel64'],
@@ -122,21 +124,20 @@ class CompilerRunner(object):
                 'def_macros': ['MKL_ILP64'],
                 }
             },
-        'gnu':{
+        'gnu': {
             'lapack': {
                 'libs': ['lapack', 'blas']
                 }
             },
-        'cray-gnu':{
+        'cray-gnu': {
             'lapack': {}
             },
         }
 
-
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, inc_dirs=None, libs=None,
                  lib_dirs=None, std=None, options=None, defmacros=None,
-                 undefmacros=None,logger=None, preferred_vendor=None,
+                 undefmacros=None, logger=None, preferred_vendor=None,
                  metadir=None, lib_options=None, only_update=False, **kwargs):
         """
         Arguments:
@@ -163,12 +164,12 @@ class CompilerRunner(object):
                     self.compiler_name])
         else:
             # Find a compiler
-            if preferred_vendor == None:
+            if preferred_vendor is None:
                 preferred_vendor = os.environ.get('COMPILER_VENDOR', None)
             self.compiler_name, self.compiler_binary, \
                 self.compiler_vendor = self.find_compiler(
                     preferred_vendor, metadir, self.cwd)
-            if self.compiler_binary == None:
+            if self.compiler_binary is None:
                 raise RuntimeError(
                     "No compiler found (searched: {0})".format(
                         ', '.join(self.compiler_dict.values())))
@@ -189,7 +190,7 @@ class CompilerRunner(object):
             # both gnu and intel compilers use '-c' for disabling linker
             self.flags = list(filter(lambda x: x != '-c', self.flags))
         else:
-            if not '-c' in self.flags:
+            if '-c' not in self.flags:
                 self.flags.append('-c')
 
         if self.std:
@@ -201,7 +202,7 @@ class CompilerRunner(object):
         # Handle options
         for opt in self.options:
             self.flags.extend(self.option_flag_dict.get(
-                self.compiler_name, {}).get(opt,[]))
+                self.compiler_name, {}).get(opt, []))
 
             # extend based on vendor options dict
             def extend(l, k):
@@ -217,7 +218,6 @@ class CompilerRunner(object):
         for lib_opt in self.lib_options:
             self.libs.extend(
                 self.lib_dict[self.compiler_name][lib_opt])
-
 
     @classmethod
     def find_compiler(cls, preferred_vendor, metadir, cwd,
@@ -260,10 +260,10 @@ class CompilerRunner(object):
             cls.save_to_metadata_file(
                 metadir, 'vendor',
                 cls.compiler_name_vendor_mapping[name])
-            if cls.logger: logger.info(
+            if cls.logger:
+                logger.info(
                     'Wrote choice of compiler to: metadir')
         return name, path, cls.compiler_name_vendor_mapping[name]
-
 
     def cmd(self):
         """
@@ -279,21 +279,23 @@ class CompilerRunner(object):
             if val is not None:
                 kw_options.append(base+val)
 
-        cmd = [self.compiler_binary] +\
-              self.flags + \
-              kw_options + \
-              ['-U'+x for x in self.undefmacros] +\
-              ['-D'+x for x in self.defmacros] +\
-              ['-I'+x for x in self.inc_dirs] +\
-              self.sources
+        cmd = (
+            [self.compiler_binary] +
+            self.flags +
+            kw_options +
+            ['-U'+x for x in self.undefmacros] +
+            ['-D'+x for x in self.defmacros] +
+            ['-I'+x for x in self.inc_dirs] +
+            self.sources
+        )
         if self.run_linker:
-            cmd += ['-L'+x for x in self.lib_dirs]+ \
-                   ['-l'+x for x in self.libs] +\
+            cmd += ['-L'+x for x in self.lib_dirs] + \
+                   ['-l'+x for x in self.libs] + \
                    self.linkline
         counted = []
         for envvar in re.findall('\$\{(\w+)\}', ' '.join(cmd)):
-            if os.getenv(envvar) == None:
-                if not envvar in counted:
+            if os.getenv(envvar) is None:
+                if envvar not in counted:
                     counted.append(envvar)
                     msg = "Environment variable '{}' undefined.".format(
                         envvar)
@@ -301,14 +303,13 @@ class CompilerRunner(object):
                     self.logger.error(msg)
         return cmd
 
-
     def run(self):
         if self.only_update:
             for src in self.sources:
                 if missing_or_other_newer(self.out, src, cwd=self.cwd):
                     break
             else:
-                msg = ('No source newer than {0}.'+\
+                msg = ('No source newer than {0}.' +
                        ' Did not compile').format(
                            self.out)
                 if self.logger:
@@ -323,8 +324,10 @@ class CompilerRunner(object):
         self.flags.extend(['-o', self.out])
 
         # Logging
-        if self.logger: self.logger.info(
-                'In "{0}", executing:\n"{1}"'.format(self.cwd, ' '.join(self.cmd())))
+        if self.logger:
+            self.logger.info(
+                'In "{0}", executing:\n"{1}"'.format(
+                    self.cwd, ' '.join(self.cmd())))
 
         env = os.environ.copy()
         env['PWD'] = self.cwd
@@ -334,7 +337,7 @@ class CompilerRunner(object):
         p = subprocess.Popen(' '.join(self.cmd()),
                              shell=True,
                              cwd=self.cwd,
-                             stdin= subprocess.PIPE,
+                             stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
                              env=env)
@@ -347,7 +350,7 @@ class CompilerRunner(object):
 
         # Error handling
         if self.cmd_returncode != 0:
-            msg = "Error executing '{0}' in {1}. Command exited with status {2}"+\
+            msg = "Error executing '{0}' in {1}. Command exited with status {2}" + \
                   " after givning the following output: {3}\n"
             raise CompilationError(msg.format(
                 u' '.join(self.cmd()), self.cwd, str(self.cmd_returncode),
@@ -367,14 +370,13 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
         'cray-gnu': 'cc',
     }
 
-    standards = ('c89', 'c90', 'c99', 'c11') # First is default
+    standards = ('c89', 'c90', 'c99', 'c11')  # First is default
 
     std_formater = {
         'gcc': '-std={}'.format,
         'icc': '-std={}'.format,
         'cc': '-std={}'.format,
     }
-
 
     option_flag_dict = {
         'gcc': {
@@ -390,7 +392,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
             'openmp': ('-openmp',),
             'warn': ('-Wall',),
         },
-        'cc': { # assume PrgEnv-gnu (not portable, future improvement..)
+        'cc': {  # assume PrgEnv-gnu (not portable, future improvement..)
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O3', '-march=native', '-ffast-math',
@@ -399,15 +401,20 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
         },
     }
 
-    compiler_name_vendor_mapping = {'gcc': 'gnu', 'icc': 'intel', 'cc': 'cray-gnu'}
+    compiler_name_vendor_mapping = {
+        'gcc': 'gnu',
+        'icc': 'intel',
+        'cc': 'cray-gnu'
+    }
 
 
-def _mk_flag_filter(cmplr_name): # helper for class initialization
-    not_welcome = {'g++': ("Wimplicit-interface",)}#"Wstrict-prototypes",)}
+def _mk_flag_filter(cmplr_name):  # helper for class initialization
+    not_welcome = {'g++': ("Wimplicit-interface",)}  # "Wstrict-prototypes",)}
     if cmplr_name in not_welcome:
         def fltr(x):
             for nw in not_welcome[cmplr_name]:
-                if nw in x: return False
+                if nw in x:
+                    return False
             return True
     else:
         def fltr(x):
@@ -437,7 +444,7 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         },
         'icpc': {
         },
-        'CC': { # assume PrgEnv-gnu (not portable, future improvement..)
+        'CC': {  # assume PrgEnv-gnu (not portable, future improvement..)
         }
     }
 
@@ -449,14 +456,18 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         'icpc': {
             'openmp': ('iomp5',),
         },
-        'cray-gnu': {# assume PrgEnv-gnu (not portable, future improvement..)
+        'cray-gnu': {  # assume PrgEnv-gnu (not portable, future improvement..)
             'fortran': ('gfortranbegin', 'gfortran'),
             'openmp': ('gomp',),
         },
 
     }
 
-    compiler_name_vendor_mapping = {'g++': 'gnu', 'icpc': 'intel', 'CC': 'cray-gnu'}
+    compiler_name_vendor_mapping = {
+        'g++': 'gnu',
+        'icpc': 'intel',
+        'CC': 'cray-gnu'
+    }
 
     def __init__(self, *args, **kwargs):
         # g++ takes a superset of gcc arguments
@@ -477,11 +488,11 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
 
 class FortranCompilerRunner(CompilerRunner, HasMetaData):
 
-    standards = (None, 'f95', 'f2003', 'f2008') #First is default (F77)
+    standards = (None, 'f95', 'f2003', 'f2008')  # First is default (F77)
 
     std_formater = {
         'gfortran': '-std={}'.format,
-        'ifort': lambda x: '-stand f{}'.format(x[-2:]), # f2008 => f08
+        'ifort': lambda x: '-stand f{}'.format(x[-2:]),  # f2008 => f08
         'ftn': '-std={}'.format,
     }
 
@@ -498,7 +509,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         'ifort': {
             'warn': ('-warn', 'all',),
         },
-        'ftn': { # assume PrgEnv-gnu (not portable, future improvement..)
+        'ftn': {  # assume PrgEnv-gnu (not portable, future improvement..)
             'f2008': ('-std=f2008',),
             'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
         },
@@ -511,7 +522,7 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         'ifort': {
             'openmp': ('iomp5',),
         },
-        'cray-gnu': {# assume PrgEnv-gnu (not portable, future improvement..)
+        'cray-gnu': {  # assume PrgEnv-gnu (not portable, future improvement..)
             'openmp': ('gomp',),
         },
 
@@ -520,9 +531,8 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     compiler_name_vendor_mapping = {
         'gfortran': 'gnu',
         'ifort': 'intel',
-        'ftn': 'cray-gnu', # obvious deficiency with current method
+        'ftn': 'cray-gnu',  # obvious deficiency with current method
     }
-
 
     def __init__(self, *args, **kwargs):
         # gfortran takes a superset of gcc arguments
@@ -560,7 +570,7 @@ def compile_sources(files, CompilerRunner_=None,
     """
     _per_file_kwargs = {}
 
-    if per_file_kwargs != None:
+    if per_file_kwargs is not None:
         for k, v in per_file_kwargs.items():
             if isinstance(k, Glob):
                 for path in glob.glob(k.pathname):
@@ -578,7 +588,7 @@ def compile_sources(files, CompilerRunner_=None,
             raise IOError("{} is not a directory".format(destdir))
         else:
             make_dirs(destdir)
-    if cwd == None:
+    if cwd is None:
         cwd = '.'
         for f in files:
             copy(f, destdir, only_update=True, dest_is_dir=True)
@@ -619,9 +629,10 @@ def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
     shared objct or executable binary. Pass cplus and fort
     respectively to for automatic choice of compiler for linking
     """
-    if out_file == None:
+    if out_file is None:
         out_file, ext = os.path.splitext(os.path.basename(obj_files[-1]))
-        if shared: out_file += sharedext
+        if shared:
+            out_file += sharedext
 
     if not CompilerRunner_:
         if fort:
@@ -632,7 +643,7 @@ def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
                     cplus=cplus,
                     cwd=cwd,
                 )
-            for k,v in extra_kwargs.items():
+            for k, v in extra_kwargs.items():
                 expand_collection_in_dict(kwargs, k, v)
         else:
             if cplus:
@@ -640,12 +651,13 @@ def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
             else:
                 CompilerRunner_ = CCompilerRunner
 
-    flags = kwargs.pop('flags',[])
+    flags = kwargs.pop('flags', [])
     if shared:
-        if not '-shared' in flags:
+        if '-shared' not in flags:
             flags.append('-shared')
     run_linker = kwargs.pop('run_linker', True)
-    if not run_linker: raise ValueError("link(..., run_linker=False)!?")
+    if not run_linker:
+        raise ValueError("link(..., run_linker=False)!?")
 
     out_file = get_abspath(out_file, cwd=cwd)
     runner = CompilerRunner_(
@@ -681,7 +693,7 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
     # in order to at least have a small chance of build succeeding)
 
     BLDLIBRARY = get_config_vars('BLDLIBRARY')[0] or (
-    '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
+        '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
     BLDSHARED = get_config_vars('BLDSHARED')[0] or 'gcc -shared'
     libs += [x[2:] for x in BLDLIBRARY.split() if x.startswith('-l')]
     cc = BLDSHARED
@@ -698,7 +710,7 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
         lambda x: x.startswith('-L'), flags)]
     flags = list(filter(lambda x: not x.startswith('-L'), flags))
 
-    flags.extend(kwargs.pop('flags',[]))
+    flags.extend(kwargs.pop('flags', []))
 
     return link(obj_files, shared=True, flags=flags, cwd=cwd,
                 cplus=cplus, fort=fort, inc_dirs=inc_dirs, libs=libs,
@@ -743,7 +755,8 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
 
     cy_options = CompilationOptions(default_options)
     cy_options.__dict__.update(cy_kwargs)
-    if logger: logger.info("Cythonizing {0} to {1}".format(
+    if logger:
+        logger.info("Cythonizing {0} to {1}".format(
             src, dstfile))
     cy_compile([src], cy_options, full_module_name=full_module_name)
     if os.path.abspath(os.path.dirname(
@@ -763,7 +776,7 @@ extension_mapping = {
     '.f'  : (FortranCompilerRunner, None),
     '.for': (FortranCompilerRunner, None),
     '.ftn': (FortranCompilerRunner, None),
-    '.f90': (FortranCompilerRunner, 'f2008'), # ifort only knows about .f90
+    '.f90': (FortranCompilerRunner, 'f2008'),  # ifort only knows about .f90
     '.f95': (FortranCompilerRunner, 'f95'),
     '.f03': (FortranCompilerRunner, 'f2003'),
     '.f08': (FortranCompilerRunner, 'f2008'),
@@ -774,29 +787,29 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
             only_update=False, cwd=None, out_ext=None, inc_py=False,
             **kwargs):
     name, ext = os.path.splitext(os.path.basename(srcpath))
-    if objpath == None:
+    if objpath is None:
         if os.path.isabs(srcpath):
             objpath = '.'
         else:
             objpath = os.path.dirname(srcpath)
-            objpath = objpath or '.' # avoid objpath == ''
+            objpath = objpath or '.'  # avoid objpath == ''
     out_ext = out_ext or objext
     if os.path.isdir(objpath):
         objpath = os.path.join(objpath, name+out_ext)
 
-    inc_dirs = kwargs.pop('inc_dirs',[])
+    inc_dirs = kwargs.pop('inc_dirs', [])
     if inc_py:
         from distutils.sysconfig import get_python_inc, get_config_vars
         inc_dirs += [get_python_inc()]
 
-
-    if CompilerRunner_ == None:
+    if CompilerRunner_ is None:
         if ext.lower() == '.pyx':
             return pyx2obj(srcpath, objpath=objpath,
                            inc_dirs=inc_dirs, cwd=cwd,
                            only_update=only_update, **kwargs)
         CompilerRunner_, std = extension_mapping[ext.lower()]
-        if not 'std' in kwargs: kwargs['std'] = std
+        if 'std' not in kwargs:
+            kwargs['std'] = std
 
     # src2obj implies not running the linker...
     run_linker = kwargs.pop('run_linker', False)
@@ -845,7 +858,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
 
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
-    if cplus == None:
+    if cplus is None:
         cplus = pyx_is_cplus(abs_pyxpath)
     cy_kwargs['cplus'] = cplus
     if gdb:
@@ -863,18 +876,23 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     if include_numpy:
         import numpy
         numpy_inc_dir = numpy.get_include()
-        if not numpy_inc_dir in inc_dirs:
+        if numpy_inc_dir not in inc_dirs:
             inc_dirs.append(numpy_inc_dir)
 
     flags = kwargs.pop('flags', [])
     flags.extend(['-fno-strict-aliasing'])
     options = kwargs.pop('options', [])
-    if not 'pic' in options: options.append('pic')
-    if not 'warn' in options: options.append('warn')
+
+    if 'pic' not in options:
+        options.append('pic')
+    if 'warn' not in options:
+        options.append('warn')
+
     if cplus:
         std = kwargs.pop('std', 'c++0x')
     else:
         std = kwargs.pop('std', 'c99')
+
     return src2obj(
         interm_c_file,
         objpath=objpath,
@@ -886,5 +904,5 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         std=std,
         options=options,
         logger=logger,
-        inc_py = True,
+        inc_py=True,
         **kwargs)
