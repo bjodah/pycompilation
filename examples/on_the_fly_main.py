@@ -14,7 +14,7 @@ import time
 
 import numpy as np
 
-from pycompilation.dist import compile_link_import_strings
+from pycompilation import compile_link_import_strings
 
 
 sources_ = [

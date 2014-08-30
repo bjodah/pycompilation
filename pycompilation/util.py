@@ -8,10 +8,17 @@ import fnmatch
 import os
 import pickle
 import shutil
+
 from collections import namedtuple
 from hashlib import md5
 
-from ._helpers import FileNotFoundError
+
+class CompilationError(Exception):
+    pass
+
+
+class FileNotFoundError(Exception):
+    pass
 
 
 def expand_collection_in_dict(d, key, new_items, no_duplicates=True):

@@ -13,21 +13,24 @@ from __future__ import (
 from future.builtins import (bytes, str, open, super, range,
                              zip, round, input, int, pow, object)
 
+import base64
 import glob
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import uuid
 
 from .util import (
     HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
     expand_collection_in_dict, make_dirs, copy, Glob, ArbitraryDepthGlob,
-    glob_at_depth
+    glob_at_depth, CompilationError, FileNotFoundError, import_module_from_file,
 )
 from ._helpers import (
     find_binary_of_command, uniquify, assure_dir,
-    CompilationError, FileNotFoundError, pyx_is_cplus
+    pyx_is_cplus
 )
 
 if os.name == 'posix':  # Future improvement to make cross-platform
@@ -35,7 +38,7 @@ if os.name == 'posix':  # Future improvement to make cross-platform
     objext = '.o'
     sharedext = '.so'
 elif os.name == 'nt':
-    flagprefix = '/'
+    # flagprefix = '/' <-- let's assume mingw compilers...
     objext = '.obj'
     sharedext = '.dll'
 else:
@@ -61,13 +64,6 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
         else:
             return (FortranCompilerRunner,
                     {'flags': ['-nofor_main']}, vendor)
-    elif vendor.lower() == 'cray-gnu':
-        if cplus:
-            return (CppCompilerRunner,
-                    {}, vendor)
-        else:
-            return (FortranCompilerRunner,
-                    {}, vendor)
     elif vendor.lower() == 'gnu':
         if cplus:
             return (CppCompilerRunner,
@@ -105,13 +101,14 @@ class CompilerRunner(object):
     vendor_options_dict = {
         'intel': {
             'lapack': {
-                # 'linkline': [],
-                # 'libs': ['mkl_avx', 'mkl_intel_lp64', 'mkl_core',
-                #          'mkl_intel_thread', 'pthread', 'm'],
-                # 'lib_dirs': ['${MKLROOT}/lib/intel64'],
-                # 'inc_dirs': ['${MKLROOT}/include/intel64/lp64',
-                #              '${MKLROOT}/include'],
-                # 'flags': ['-openmp'],
+                'linkline': [],
+                'libs': ['mkl_avx', 'mkl_intel_lp64', 'mkl_core',
+                         'mkl_intel_thread', 'pthread', 'm'],
+                'lib_dirs': ['${MKLROOT}/lib/intel64'],
+                'inc_dirs': ['${MKLROOT}/include/intel64/lp64',
+                             '${MKLROOT}/include'],
+                'flags': ['-openmp'],
+            } if os.environ.get("INTEL_MKL_DYNAMIC", False) else {
                 'linkline': ['-Wl,--start-group ' +
                              ' ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a' +
                              ' ${MKLROOT}/lib/intel64/libmkl_core.a' +
@@ -122,15 +119,17 @@ class CompilerRunner(object):
                 'inc_dirs': ['${MKLROOT}/include'],
                 'flags': ['-openmp'],
                 'def_macros': ['MKL_ILP64'],
-                }
-            },
+            }
+        },
         'gnu': {
             'lapack': {
                 'libs': ['lapack', 'blas']
                 }
             },
-        'cray-gnu': {
-            'lapack': {}
+        'llvm': {
+            'lapack': {
+                'libs': ['lapack', 'blas']
+                }
             },
         }
 
@@ -367,7 +366,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     compiler_dict = {
         'gnu': 'gcc',
         'intel': 'icc',
-        'cray-gnu': 'cc',
+        'llvm': 'clang',
     }
 
     standards = ('c89', 'c90', 'c99', 'c11')  # First is default
@@ -375,7 +374,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     std_formater = {
         'gcc': '-std={}'.format,
         'icc': '-std={}'.format,
-        'cc': '-std={}'.format,
+        'clang': '-std={}'.format,
     }
 
     option_flag_dict = {
@@ -392,7 +391,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
             'openmp': ('-openmp',),
             'warn': ('-Wall',),
         },
-        'cc': {  # assume PrgEnv-gnu (not portable, future improvement..)
+        'clang': {
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O3', '-march=native', '-ffast-math',
@@ -404,7 +403,7 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
     compiler_name_vendor_mapping = {
         'gcc': 'gnu',
         'icc': 'intel',
-        'cc': 'cray-gnu'
+        'clang': 'llvm'
     }
 
 
@@ -427,7 +426,7 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
     compiler_dict = {
         'gnu': 'g++',
         'intel': 'icpc',
-        'cray-gnu': 'CC',
+        'llvm': 'clang++'
     }
 
     # First is the default, c++0x == c++11
@@ -436,7 +435,6 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
     std_formater = {
         'g++': '-std={}'.format,
         'icpc': '-std={}'.format,
-        'cray-gnu': '-std={}'.format,
     }
 
     option_flag_dict = {
@@ -444,7 +442,7 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         },
         'icpc': {
         },
-        'CC': {  # assume PrgEnv-gnu (not portable, future improvement..)
+        'clang++': {
         }
     }
 
@@ -456,17 +454,13 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         'icpc': {
             'openmp': ('iomp5',),
         },
-        'cray-gnu': {  # assume PrgEnv-gnu (not portable, future improvement..)
-            'fortran': ('gfortranbegin', 'gfortran'),
-            'openmp': ('gomp',),
-        },
 
     }
 
     compiler_name_vendor_mapping = {
         'g++': 'gnu',
         'icpc': 'intel',
-        'CC': 'cray-gnu'
+        'clang++': 'llvm'
     }
 
     def __init__(self, *args, **kwargs):
@@ -474,9 +468,9 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
         new_option_flag_dict = {
             'g++': CCompilerRunner.option_flag_dict['gcc'].copy(),
             'icpc': CCompilerRunner.option_flag_dict['icc'].copy(),
-            'CC': CCompilerRunner.option_flag_dict['cc'].copy(),
+            'clang++': CCompilerRunner.option_flag_dict['clang'].copy(),
         }
-        for key in ['g++', 'icpc', 'CC']:
+        for key in ['g++', 'icpc', 'clang++']:
             if self.option_flag_dict[key]:
                 fltr = _mk_flag_filter(key)
                 keys, values = zip(*self.option_flag_dict[key].items())
@@ -493,13 +487,12 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     std_formater = {
         'gfortran': '-std={}'.format,
         'ifort': lambda x: '-stand f{}'.format(x[-2:]),  # f2008 => f08
-        'ftn': '-std={}'.format,
     }
 
     compiler_dict = {
         'gnu': 'gfortran',
         'intel': 'ifort',
-        'cray-gnu': 'ftn',
+        'llvm': 'gfortran'
     }
 
     option_flag_dict = {
@@ -508,10 +501,6 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         },
         'ifort': {
             'warn': ('-warn', 'all',),
-        },
-        'ftn': {  # assume PrgEnv-gnu (not portable, future improvement..)
-            'f2008': ('-std=f2008',),
-            'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
         },
     }
 
@@ -522,16 +511,11 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         'ifort': {
             'openmp': ('iomp5',),
         },
-        'cray-gnu': {  # assume PrgEnv-gnu (not portable, future improvement..)
-            'openmp': ('gomp',),
-        },
-
     }
 
     compiler_name_vendor_mapping = {
         'gfortran': 'gnu',
         'ifort': 'intel',
-        'ftn': 'cray-gnu',  # obvious deficiency with current method
     }
 
     def __init__(self, *args, **kwargs):
@@ -539,9 +523,8 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         new_option_flag_dict = {
             'gfortran': CCompilerRunner.option_flag_dict['gcc'].copy(),
             'ifort': CCompilerRunner.option_flag_dict['icc'].copy(),
-            'ftn': CCompilerRunner.option_flag_dict['cc'].copy(),
         }
-        for key in ['gfortran', 'ifort', 'ftn']:
+        for key in ['gfortran', 'ifort']:
             new_option_flag_dict[key].update(self.option_flag_dict[key])
         self.option_flag_dict = new_option_flag_dict
 
@@ -786,6 +769,10 @@ extension_mapping = {
 def src2obj(srcpath, CompilerRunner_=None, objpath=None,
             only_update=False, cwd=None, out_ext=None, inc_py=False,
             **kwargs):
+    """
+    Files ending with '.pyx' assumed to be cython files and
+    are dispatched to pyx2obj.
+    """
     name, ext = os.path.splitext(os.path.basename(srcpath))
     if objpath is None:
         if os.path.isabs(srcpath):
@@ -802,11 +789,12 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
         from distutils.sysconfig import get_python_inc, get_config_vars
         inc_dirs += [get_python_inc()]
 
+    if ext.lower() == '.pyx':
+        return pyx2obj(srcpath, objpath=objpath,
+                       inc_dirs=inc_dirs, cwd=cwd,
+                       only_update=only_update, **kwargs)
+
     if CompilerRunner_ is None:
-        if ext.lower() == '.pyx':
-            return pyx2obj(srcpath, objpath=objpath,
-                           inc_dirs=inc_dirs, cwd=cwd,
-                           only_update=only_update, **kwargs)
         CompilerRunner_, std = extension_mapping[ext.lower()]
         if 'std' not in kwargs:
             kwargs['std'] = std
@@ -906,3 +894,98 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         logger=logger,
         inc_py=True,
         **kwargs)
+
+def _any_X(srcs, cls):
+    for src in srcs:
+        name, ext = os.path.splitext(src)
+        key = ext.lower()
+        if key in extension_mapping:
+            if extension_mapping[key][0] == cls:
+                return True
+    return False
+
+
+def any_fort(srcs):
+    return _any_X(srcs, FortranCompilerRunner)
+
+
+def any_cplus(srcs):
+    return _any_X(srcs, CppCompilerRunner)
+
+
+def compile_link_import_py_ext(
+        srcs, extname=None, build_dir=None, compile_kwargs=None,
+        link_kwargs=None, **kwargs):
+    """
+    Compiles sources in `srcs` to a shared object (python extension)
+    which is imported. If shared object is newer than the sources, they
+    are not recompiled but instead it is imported.
+
+    Parameters
+    ==========
+    srcs: string
+        list of paths to sources
+    extname: string
+        name of extension (default: None)
+        (taken from the last file in `srcs` - without extension)
+    build_dir: string
+        path to directory in which objects files etc. are generated
+    compile_kwargs: dict
+        keyword arguments passed to compile_sources
+    link_kwargs: dict
+        keyword arguments passed to link_py_so
+    **kwargs:
+        additional keyword arguments overwrites to both compile_kwargs
+        and link_kwargs useful for convenience e.g. when passing logger
+
+    Returns
+    =======
+    the imported module
+
+    Examples
+    ========
+    >>> mod = compile_link_import_py_ext(['fft.f90', 'convolution.cpp',
+        'fft_wrapper.pyx'])  # doctest: +SKIP
+    >>> Aprim = mod.fft(A)  # doctest: +SKIP
+
+    """
+
+    build_dir = build_dir or '.'
+    if extname is None:
+        extname = os.path.splitext(os.path.basename(srcs[-1]))[0]
+
+    compile_kwargs = compile_kwargs or {}
+    compile_kwargs.update(kwargs)
+
+    link_kwargs = link_kwargs or {}
+    link_kwargs.update(kwargs)
+
+    try:
+        mod = import_module_from_file(os.path.join(build_dir, extname), srcs)
+    except ImportError:
+        objs = compile_sources(map(get_abspath, srcs), destdir=build_dir,
+                               cwd=build_dir, **compile_kwargs)
+        so = link_py_so(
+            objs, cwd=build_dir, fort=any_fort(srcs), cplus=any_cplus(srcs),
+            **link_kwargs)
+        mod = import_module_from_file(so)
+    return mod
+
+
+def compile_link_import_strings(codes, name=None, **kwargs):
+    name = name or "_" + base64.b32encode(
+        uuid.uuid4().bytes).decode().strip("=")
+    build_dir = tempfile.mkdtemp(name)
+    source_files = []
+    if kwargs.get('logger', False) is True:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        kwargs['logger'] = logging.getLogger('name')
+
+    for name, code_ in codes:
+        dest = os.path.join(build_dir, name)
+        with open(dest, 'wt') as fh:
+            fh.write(code_)
+            source_files.append(dest)
+    return compile_link_import_py_ext(
+        source_files, build_dir=build_dir, **kwargs)

@@ -9,7 +9,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 
 import sys
 
-from pycompilation.dist import compile_link_import_strings
+from pycompilation import compile_link_import_strings
 
 
 # Code based on:

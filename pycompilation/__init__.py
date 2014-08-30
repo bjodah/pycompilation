@@ -1,8 +1,10 @@
 __version__ = '0.3.0-dev'
 
+from .compilation import (
+    compile_sources, link_py_so, src2obj,
+    compile_link_import_py_ext, compile_link_import_strings
+)
 from .util import (
     missing_or_other_newer, md5_of_file, download_files,
-    import_module_from_file
+    import_module_from_file, CompilationError, FileNotFoundError
 )
-from .compilation import compile_sources, link_py_so, src2obj
-from ._helpers import CompilationError, FileNotFoundError

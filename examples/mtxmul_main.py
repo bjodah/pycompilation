@@ -9,7 +9,7 @@ import tempfile
 
 import numpy as np
 
-from pycompilation.dist import compile_link_import_py_ext
+from pycompilation import compile_link_import_py_ext
 
 source_files = ['mtxmul.f90', 'mtxmul_wrapper.pyx']
 
