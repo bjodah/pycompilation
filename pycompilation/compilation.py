@@ -559,7 +559,7 @@ def compile_sources(files, CompilerRunner_=None,
                 for path in glob.glob(k.pathname):
                     _per_file_kwargs[path] = v
             elif isinstance(k, ArbitraryDepthGlob):
-                for path in glob_at_depth(k.filename):
+                for path in glob_at_depth(k.filename, cwd):
                     _per_file_kwargs[path] = v
             else:
                 _per_file_kwargs[k] = v
