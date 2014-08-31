@@ -435,6 +435,7 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
     std_formater = {
         'g++': '-std={}'.format,
         'icpc': '-std={}'.format,
+        'clang++': '-std={}'.format,
     }
 
     option_flag_dict = {
