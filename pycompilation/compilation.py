@@ -14,6 +14,7 @@ from future.builtins import (bytes, str, open, super, range,
                              zip, round, input, int, pow, object)
 
 import base64
+from collections import OrderedDict
 import glob
 import os
 import re
@@ -64,7 +65,7 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
         else:
             return (FortranCompilerRunner,
                     {'flags': ['-nofor_main']}, vendor)
-    elif vendor.lower() == 'gnu':
+    elif vendor.lower() == 'gnu' or 'llvm':
         if cplus:
             return (CppCompilerRunner,
                     {'lib_options': ['fortran']}, vendor)
@@ -363,11 +364,11 @@ class CompilerRunner(object):
 
 class CCompilerRunner(CompilerRunner, HasMetaData):
 
-    compiler_dict = {
-        'gnu': 'gcc',
-        'intel': 'icc',
-        'llvm': 'clang',
-    }
+    compiler_dict = OrderedDict([
+        ('gnu', 'gcc'),
+        ('intel', 'icc'),
+        ('llvm', 'clang'),
+    ])
 
     standards = ('c89', 'c90', 'c99', 'c11')  # First is default
 
@@ -423,11 +424,11 @@ def _mk_flag_filter(cmplr_name):  # helper for class initialization
 
 class CppCompilerRunner(CompilerRunner, HasMetaData):
 
-    compiler_dict = {
-        'gnu': 'g++',
-        'intel': 'icpc',
-        'llvm': 'clang++'
-    }
+    compiler_dict = OrderedDict([
+        ('gnu', 'g++'),
+        ('intel', 'icpc'),
+        ('llvm', 'clang++'),
+    ])
 
     # First is the default, c++0x == c++11
     standards = ('c++98', 'c++0x')
@@ -490,11 +491,11 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
         'ifort': lambda x: '-stand f{}'.format(x[-2:]),  # f2008 => f08
     }
 
-    compiler_dict = {
-        'gnu': 'gfortran',
-        'intel': 'ifort',
-        'llvm': 'gfortran'
-    }
+    compiler_dict = OrderedDict([
+        ('gnu', 'gfortran'),
+        ('intel', 'ifort'),
+        ('llvm', 'gfortran')
+    ])
 
     option_flag_dict = {
         'gfortran': {
