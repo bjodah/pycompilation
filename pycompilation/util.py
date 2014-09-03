@@ -61,25 +61,6 @@ def glob_at_depth(filename_glob, cwd=None):
     return globbed
 
 
-def term_fmt(s, fg=('red', 'black')):
-    """
-    See http://ascii-table.com/ansi-escape-sequences.php
-    """
-    fgi = {
-        'black': 30,
-        'red': 31,
-        'green': 32,
-        'yellow': 33,
-        'blue': 34,
-        'magenta': 35,
-        'cyan': 36,
-        'white': 37,
-        }
-    return "{}{}{}".format(
-        '\033[{};1m'.format(fgi[fg[0].lower()]),
-        s, '\033[{};0m'.format(fgi[fg[1].lower()]))
-
-
 def get_abspath(path, cwd=None):
     if os.path.isabs(path):
         return path
@@ -276,3 +257,39 @@ def import_module_from_file(filename, only_if_newer_than=None):
                 raise ImportError("{} is newer than {}".format(dep, filename))
     mod = imp.load_module(name, fobj, filename, data)
     return mod
+
+
+def find_binary_of_command(candidates):
+    """
+    Calls `find_executable` from distuils for
+    provided candidates and returns first hit.
+    If no candidate mathces, a RuntimeError is raised
+    """
+    from distutils.spawn import find_executable
+    for c in candidates:
+        binary_path = find_executable(c)
+        if c and binary_path:
+            return c, binary_path
+    raise RuntimeError('No binary located for candidates: {}'.format(
+        candidates))
+
+
+def pyx_is_cplus(path):
+    for line in open(path, 'rt'):
+        if line.startswith('#') and '=' in line:
+            splitted = line.split('=')
+            if len(splitted) != 2:
+                continue
+            lhs, rhs = splitted
+            if lhs.strip().split()[-1].lower() == 'language' and \
+               rhs.strip().split()[0].lower() == 'c++':
+                    return True
+    return False
+
+
+def uniquify(l):
+    result = []
+    for x in l:
+        if x not in result:
+            result.append(x)
+    return result

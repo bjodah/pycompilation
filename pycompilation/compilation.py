@@ -27,11 +27,8 @@ import uuid
 from .util import (
     HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
     expand_collection_in_dict, make_dirs, copy, Glob, ArbitraryDepthGlob,
-    glob_at_depth, CompilationError, FileNotFoundError, import_module_from_file,
-)
-from ._helpers import (
-    find_binary_of_command, uniquify, assure_dir,
-    pyx_is_cplus
+    glob_at_depth, CompilationError, FileNotFoundError,
+    import_module_from_file, uniquify, find_binary_of_command, pyx_is_cplus
 )
 
 if os.name == 'posix':  # Future improvement to make cross-platform
@@ -896,6 +893,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         logger=logger,
         inc_py=True,
         **kwargs)
+
 
 def _any_X(srcs, cls):
     for src in srcs:
