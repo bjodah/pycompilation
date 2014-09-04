@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Compare complexity to on_the_fly_low_level...
+Example where source code is present in Python module as strings.
+
+Note how the complexity is lowered using Cython compared to
+on_the_fly_low_level_main.py
 """
 
 from __future__ import (

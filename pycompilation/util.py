@@ -97,11 +97,30 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
     Augmented shutil.copy with extra options and slightly
     modified behaviour
 
-    Arguments:
-    -`only_update`: only copy if source is newer
-        than destination (returns None)
+    Parameters
+    ==========
+    src: string
+        path to source file
+    dst: string
+        path to destingation
+    only_update: bool
+        only copy if source is newer than destination
+        (returns None if it was newer), default: False
+    copystat: bool
+        See shutil.copystat. default: True
+    cwd: string
+        Path to working directory (root of relative paths)
+    dest_is_dir: bool
+        ensures that dst is treated as a directory. default: False
+    create_dest_dirs: bool
+        creates directories if needed.
+    logger: logging.Looger
+        debug level info emitted. Passed onto make_dirs.
 
-    returns absolute path of dst if copy was performed
+    Returns
+    =======
+    Path to the copied file.
+
     """
     # Handle virtual working directory
     if cwd:
@@ -163,8 +182,17 @@ def copy(src, dst, only_update=False, copystat=True, cwd=None,
 
 def md5_of_file(path, nblocks=128):
     """
-    Use .digest() or .hexdigest() on returned object
-    to get binary or hex encoded string.
+    Computes the md5 hash of a file.
+
+    Parameters
+    ==========
+    path: string
+        path to file to compute hash of
+
+    Returns
+    =======
+    hashlib md5 hash object. Use .digest() or .hexdigest()
+    on returned object to get binary or hex encoded string.
     """
     md = md5()
     with open(path, 'rb') as f:
@@ -175,7 +203,21 @@ def md5_of_file(path, nblocks=128):
 
 def missing_or_other_newer(path, other_path, cwd=None):
     """
-    Newer (or same time stamp)
+    Investigate if path is non-existant or older than provided reference
+    path.
+
+    Parameters
+    ==========
+    path: string
+        path to path which might be missing or too old
+    other_path: string
+        reference path
+    cwd: string
+        working directory (root of relative paths)
+
+    Returns
+    =======
+    True if path is older or missing.
     """
     cwd = cwd or '.'
     path = get_abspath(path, cwd=cwd)
@@ -190,7 +232,7 @@ def missing_or_other_newer(path, other_path, cwd=None):
 
 class HasMetaData(object):
     """
-    Provides convenice methods for a class to pickle some metadata
+    Provides convenice classmethods for a class to pickle some metadata.
     """
     metadata_filename = '.metadata'
 
@@ -245,7 +287,19 @@ def import_module_from_file(filename, only_if_newer_than=None):
     not detect the new time stamp nor new checksum but will use old
     module.
 
-    Use unique names for this reason
+    Use unique names for this reason.
+
+    Parameters
+    ==========
+    filename: string
+        path to shared object
+    only_if_newer_than: iterable of strings
+        paths to dependencies of the shared object
+
+    Raises
+    ======
+    ImportError if any of the files specified in only_if_newer_than are newer
+    than the file given by filename.
     """
     import imp
     path, name = os.path.split(filename)
@@ -275,6 +329,13 @@ def find_binary_of_command(candidates):
 
 
 def pyx_is_cplus(path):
+    """
+    Inspect a Cython source file (.pyx) and look for comment line like:
+
+    # distutils: language = c++
+
+    Returns True if such a file is present in the file, else False.
+    """
     for line in open(path, 'rt'):
         if line.startswith('#') and '=' in line:
             splitted = line.split('=')
@@ -288,6 +349,9 @@ def pyx_is_cplus(path):
 
 
 def uniquify(l):
+    """
+    Uniquify a list (skip duplicate items).
+    """
     result = []
     for x in l:
         if x not in result:

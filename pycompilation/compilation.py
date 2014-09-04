@@ -13,7 +13,6 @@ from __future__ import (
 from future.builtins import (bytes, str, open, super, range,
                              zip, round, input, int, pow, object)
 
-import base64
 from collections import OrderedDict
 import glob
 import os
@@ -22,7 +21,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import uuid
 
 from .util import (
     HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
@@ -74,6 +72,61 @@ def get_mixed_fort_c_linker(vendor=None, metadir=None, cplus=False,
 
 
 class CompilerRunner(object):
+
+    """
+    CompilerRunner class.
+
+    Parameters
+    ==========
+    sources: iterable of path strings
+    out: path string
+    flags: iterable of strings
+    run_linker: bool
+    compiler: string
+        compiler command to call
+    cwd: path string
+        root of relative paths
+    inc_dirs: iterable of path strings
+        include directories
+    libs: iterable of strings
+        libraries to link against.
+    lib_dirs: iterable of path strings
+        paths to search for shared libraries
+    std: string
+        Standard string, e.g. c++11, c99, f2008
+    options: iterable of strings
+        pycompilation convenience tags (fast, warn, pic, openmp).
+        Sets extra compiler flags.
+    defmacros: iterable of strings
+        macros to define
+    undefmacros: iterable of strings
+        macros to undefine
+    logger: logging.Logger
+        info and error level used.
+    preferred_vendor: string
+        name of preferred vendor e.g. 'gnu' or 'intel'
+    metadir: path string
+        location where to cache metadata about compilation (choice of compiler)
+    lib_options: iterable of strings
+        pycompilation convenience tags e.g. 'openmp' and/or 'fortran'.
+        Sets extra libraries.
+    only_update: bool
+        Only run compiler if sources are newer than destination. default: False
+    **kwargs: dict
+        Olevel: string
+            e.g. '2'
+        march: string
+            e.g. 'native'
+
+    Returns
+    =======
+    CompilerRunner instance
+
+    Methods
+    =======
+    run():
+        Invoke compilation as a subprocess. Log output if logger present.
+    """
 
     compiler_dict = None  # Subclass to vendor/binary dict
 
@@ -136,10 +189,6 @@ class CompilerRunner(object):
                  lib_dirs=None, std=None, options=None, defmacros=None,
                  undefmacros=None, logger=None, preferred_vendor=None,
                  metadir=None, lib_options=None, only_update=False, **kwargs):
-        """
-        Arguments:
-        - `preferred_vendor`: key of compiler_dict
-        """
 
         cwd = cwd or '.'
         metadir = get_abspath(metadir or '.', cwd=cwd)
@@ -536,19 +585,26 @@ def compile_sources(files, CompilerRunner_=None,
                     per_file_kwargs=None,
                     **kwargs):
     """
-    Arguments:
-    -`files`: list of paths to source files, if cwd is given, the
-        paths are taken as relative
-    -`CompilerRunner_`: coulde be e.g.
-        pycompilation.FortranCompilerRunner
-    -`destdir`: path to output directory, if cwd is given, the path is
-        taken as relative
-    -`cwd`: current working directory. Specify to have compiler run in
-        other directory.
-    -`keep_dir_struct`: keep dir strucutre in destdir
-    -`per_file_kwargs`: dict mapping instances in `files` to
-        keyword arguments
-    -`**kwargs`: default keyword arguments to pass to CompilerRunner_
+    Compile source code files to object files.
+
+    Parameters
+    ==========
+    files: iterable of path strings
+        source files, if cwd is given, the paths are taken as relative.
+    CompilerRunner_: CompilerRunner instance (optional)
+        could be e.g. pycompilation.FortranCompilerRunner
+        Will be inferred from filename extensions if missing.
+    destdir: path string
+        output directory, if cwd is given, the path is taken as relative
+    cwd: path string
+        working directory. Specify to have compiler run in other directory.
+        also used as root of relative paths.
+    keep_dir_struct: bool
+        Reproduce directory structure in `destdir`. default: False
+    per_file_kwargs: dict
+        dict mapping instances in `files` to keyword arguments
+    **kwargs: dict
+        default keyword arguments to pass to CompilerRunner_
     """
     _per_file_kwargs = {}
 
@@ -594,22 +650,32 @@ def compile_sources(files, CompilerRunner_=None,
 def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
          cwd=None, cplus=False, fort=False, **kwargs):
     """
-    Link python extension module (shared object) for importing
+    Link object files.
 
-    Arguments:
-    -`obj_files`: list of paths to object files to be linked
-    -`out_file`: Name (path) of executable/shared object file to create. If
-        not specified it will have the basname of the last object
-        file in `obj_files`. And in the case of shared object it will
-        also carry the platform conventional extension (Unix: '.so',
-        Windows: '.dll').
-    -`CompilerRunner_`: An appropriate subclass of CompilerRunner
+    Parameters
+    ==========
+    obj_files: iterable of path strings
+    out_file: path string (optional)
+        path to executable/shared library, if missing
+        it will be deduced from the last item in obj_files.
+    shared: bool
+        Generate a shared library? default: False
+    CompilerRunner_: pycompilation.CompilerRunner subclass (optional)
+        If not given the `cplus` and `fort` flags will be inspected
+        (fallback is the C compiler)
+    cwd: path string
+        root of relative paths and working directory for compiler
+    cplus: bool
+        C++ objects? default: False
+    fort: bool
+        Fortran objects? default: False
+    **kwargs: dict
+        keyword arguments passed onto CompilerRunner_
 
-    return the absolute to the generate shared object
+    Returns
+    =======
+    The absolute to the generated shared object / executable
 
-    Links `obj_files` into possibly (shared=True)
-    shared objct or executable binary. Pass cplus and fort
-    respectively to for automatic choice of compiler for linking
     """
     if out_file is None:
         out_file, ext = os.path.splitext(os.path.basename(obj_files[-1]))
@@ -655,14 +721,29 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
     """
     Link python extension module (shared object) for importing
 
-    Arguments:
-    -`obj_files`: list of paths to object files to be linked
-    -`so_file`: Name (path) of shared object file to create. If
-         not specified it will have the basname of the last object
-         file in `obj_files` but with the extensino '.so' (Unix
-         conventin, Windows users may patch and make a pull request).
+    Parameters
+    ==========
+    obj_files: iterable of path strings
+        object files to be linked
+    so_file: path string
+        Name (path) of shared object file to create. If
+        not specified it will have the basname of the last object
+        file in `obj_files` but with the extension '.so' (Unix) or
+        '.dll' (Windows).
+    cwd: path string
+        root of relative paths and working directory of linker.
+    libs: iterable of strings
+        libraries to link against, e.g. ['m']
+    cplus: bool
+        Any C++ objects? default: False
+    fort: bool
+        Any Fortran objects? default: False
+    kwargs**: dict
+        keyword arguments passed onto `link(...)`
 
-    return the absolute to the generate shared object
+    Returns
+    =======
+    Absolute path to the generate shared object
     """
     libs = libs or []
 
@@ -703,7 +784,25 @@ def simple_cythonize(src, dstdir=None, cwd=None, logger=None,
                      full_module_name=None, only_update=False,
                      **cy_kwargs):
     """
-    Generates a .cpp file is cplus=True, else a .c file.
+    Generates a C file from a Cython source file.
+
+    Parameters
+    ==========
+    src: path string
+        path to Cython source
+    dstdir: path string (optional)
+        Path to output directory (default: '.')
+    cwd: path string (optional)
+        Root of relative paths (default: '.')
+    logger: logging.Logger
+        info level used.
+    full_module_name: string
+        passed to cy_compile (default: None)
+    only_update: bool
+        Only cythonize if source is newer. default: False
+    **cy_kwargs:
+        second argument passed to cy_compile.
+        Generates a .cpp file is cplus=True in cy_kwargs, else a .c file.
     """
     from Cython.Compiler.Main import (
         default_options, CompilationOptions
@@ -769,8 +868,29 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
             only_update=False, cwd=None, out_ext=None, inc_py=False,
             **kwargs):
     """
+    Compiles a source code file to an object file.
     Files ending with '.pyx' assumed to be cython files and
     are dispatched to pyx2obj.
+
+    Parameters
+    ==========
+    srcpath: path string
+        path to source file
+    CompilerRunner_: pycompilation.CompilerRunner subclass (optional)
+        Default: deduced from extension of srcpath
+    objpath: path string (optional)
+        path to generated object. defualt: deduced from srcpath
+    only_update: bool
+        only compile if source is newer than objpath. default: False
+    cwd: path string (optional)
+        working directory and root of relative paths. default: current dir.
+    out_ext: string
+        set when objpath is a dir and you want to override defaults
+        ('.o'/'.obj' for Unix/Windows).
+    inc_py: bool
+        add Python include path to inc_dirs. default: False
+    **kwargs: dict
+        keyword arguments passed onto CompilerRunner_ or pyx2obj
     """
     name, ext = os.path.splitext(os.path.basename(srcpath))
     if objpath is None:
@@ -828,7 +948,43 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     and compilation is only run if the source is newer than the
     destination
 
-    include_numpy: convenice flag for cython code cimporting numpy
+    Parameters
+    ==========
+    pyxpath: path string
+        path to Cython source file
+    objpath: path string (optional)
+        path to object file to generate
+    interm_c_dir: path string (optional)
+        directory to put generated C file.
+    cwd: path string (optional)
+        working directory and root of relative paths
+    logger: logging.Logger (optional)
+        passed onto `simple_cythonize` and `src2obj`
+    full_module_name: string (optional)
+        passed onto `simple_cythonize`
+    only_update: bool (optional)
+        passed onto `simple_cythonize` and `src2obj`
+    metadir: path string (optional)
+        passed onto src2obj
+    include_numpy: bool (optional)
+        Add numpy include directory to inc_dirs. default: False
+    inc_dirs: iterable of path strings (optional)
+        Passed onto src2obj and via cy_kwargs['include_path']
+        to simple_cythonize.
+    cy_kwargs: dict (optional)
+        keyword arguments passed onto `simple_cythonize`
+    gdb: bool (optional)
+        convenience: cy_kwargs['gdb_debug'] is set True if gdb=True,
+        default: False
+    cplus: bool (optional)
+        Indicate whether C++ is used. default: auto-detect using `pyx_is_cplus`
+    **kwargs: dict
+        keyword arguments passed onto src2obj
+
+    Returns
+    =======
+    Absolute path of generated object file.
+
     """
     assert pyxpath.endswith('.pyx')
     cwd = cwd or '.'
@@ -972,15 +1128,27 @@ def compile_link_import_py_ext(
     return mod
 
 
-def compile_link_import_strings(codes, name=None, **kwargs):
-    name = name or "_" + base64.b32encode(
-        uuid.uuid4().bytes).decode().strip("=")
-    build_dir = tempfile.mkdtemp(name)
+def compile_link_import_strings(codes, **kwargs):
+    """
+    Creates a temporary directory and dumps, compiles and links
+    provided source code.
+
+    Parameters
+    ==========
+    codes: iterable of name/source pair tuples
+    **kwargs:
+        keyword arguments passed onto `compile_link_import_py_ext`
+    """
+    # import base64
+    # import uuid
+    # name = name or "_" + base64.b32encode(
+    #     uuid.uuid4().bytes).decode().strip("=")
+    build_dir = tempfile.mkdtemp()  #name)
     source_files = []
     if kwargs.get('logger', False) is True:
         import logging
         logging.basicConfig(level=logging.DEBUG)
-        kwargs['logger'] = logging.getLogger('name')
+        kwargs['logger'] = logging.getLogger()
 
     for name, code_ in codes:
         dest = os.path.join(build_dir, name)

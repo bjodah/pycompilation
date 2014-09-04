@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Example of a quite intricate mixed compilation module.
+OpenMP enabled Fortran 2003 module is called from C++,
+the C++ callback is interfaced with Python through Cython.
+"""
+
+from __future__ import (
+    print_function, division, absolute_import, unicode_literals
+)
+
 import logging
 import os
 import sys

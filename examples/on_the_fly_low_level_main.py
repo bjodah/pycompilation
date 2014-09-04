@@ -3,22 +3,24 @@
 
 """
 This example clearly motivates the existance of Cython...
+
+Code based on:
+https://docs.python.org/3/howto/cporting.html
+
+Note that the code is most likely quite fragile..
+
+Make sure you have (on debian based systems):
+python-dev  and/or  python3-dev
 """
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import (
+    print_function, division, absolute_import, unicode_literals
+)
 
 import sys
 
 from pycompilation import compile_link_import_strings
 
-
-# Code based on:
-# https://docs.python.org/3/howto/cporting.html
-#
-# Note that the code is most likely quite fragile..
-#
-# Make sure you have (on debian based systems):
-# python-dev  and/or  python3-dev
 
 sources_ = [('adder.c', r"""
 #include "Python.h"
@@ -83,8 +85,8 @@ void initadder(void)
     return module;
 #endif
 }
-""")
-]
+""")]
+
 
 def main():
     from distutils.sysconfig import get_python_inc
@@ -98,6 +100,7 @@ def main():
     else:
         raise RuntimeError
     print("All went well!")
+
 
 if __name__ == '__main__':
     main()
