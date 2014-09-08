@@ -10,8 +10,6 @@ unless doing something like what compile_sources / src2obj do.
 from __future__ import (
     print_function, division, absolute_import, unicode_literals
 )
-from future.builtins import (bytes, str, open, super, range,
-                             zip, round, input, int, pow, object)
 
 from collections import OrderedDict
 import glob
