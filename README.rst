@@ -5,6 +5,10 @@ pycompilation
 .. image:: https://travis-ci.org/bjodah/pycompilation.png?branch=master
    :target: https://travis-ci.org/bjodah/pycompilation
 
+
+.. image:: https://readthedocs.org/projects/pycompilation/?badge=latest
+   :target: http://pycompilation.readthedocs.org/
+
 pycompilation bundles python convenience classes and functions for performing compilation
 and linking on the fly from python. Developed to simplify working with code-generation,
 compilation and import (meta-programming) from Python.
@@ -32,6 +36,10 @@ You may also look at other projects which uses pycompilation:
 .. _cInterpol: http://github.com/bjodah/cinterpol
 .. _finitediff: http://github.com/bjodah/finitediff
 .. _symvarsub: http://github.com/bjodah/symvarsub
+
+Documentation
+=============
+You find the latest documentation at http://pycompilation.readthedocs.org/
 
 Dependencies
 ============
