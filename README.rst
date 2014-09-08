@@ -6,8 +6,10 @@ pycompilation
    :target: https://travis-ci.org/bjodah/pycompilation
 
 
-.. image:: https://readthedocs.org/projects/pycompilation/?badge=latest
-   :target: http://pycompilation.readthedocs.org/
+.. image:: https://readthedocs.org/projects/pycompilation/badge/?version=latest
+   :target: https://readthedocs.org/projects/pycompilation/?badge=latest
+   :alt: Documentation Status
+
 
 pycompilation bundles python convenience classes and functions for performing compilation
 and linking on the fly from python. Developed to simplify working with code-generation,
