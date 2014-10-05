@@ -201,6 +201,12 @@ def md5_of_file(path, nblocks=128):
     return md
 
 
+def md5_of_string(string):
+    md = md5()
+    md.update(string)
+    return md
+
+
 def missing_or_other_newer(path, other_path, cwd=None):
     """
     Investigate if path is non-existant or older than provided reference

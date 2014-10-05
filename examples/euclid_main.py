@@ -13,10 +13,11 @@ from __future__ import (
 
 import logging
 import os
+import shutil
 import sys
 import tempfile
 
-import shutil
+import argh
 
 from pycompilation import src2obj, link_py_so, import_module_from_file
 
@@ -50,7 +51,11 @@ def run_compilation(**kwargs):
                       options=options_omp, **kwargs)
 
 
-def main(logger=None, clean=False):
+def main(clean=False, logger=False):
+    if logger:
+        logging.basicConfig(level=logging.DEBUG)
+        logger = logging.getLogger(__file__)
+
     build_dir = tempfile.mkdtemp('euclid')
     so_file_path = run_compilation(logger=logger, cwd=build_dir)
     mod = import_module_from_file(so_file_path)
@@ -81,9 +86,4 @@ def main(logger=None, clean=False):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__file__)
-    clean = False
-    if len(sys.argv) > 1:
-        clean = sys.argv[1] == 'clean'
-    main(logger=logger, clean=clean)
+    argh.dispatch_command(main)

@@ -15,6 +15,7 @@ import shutil
 import sys
 import tempfile
 
+import argh
 import numpy as np
 
 from pycompilation import compile_link_import_py_ext
@@ -22,7 +23,11 @@ from pycompilation import compile_link_import_py_ext
 source_files = ['mtxmul.f90', 'mtxmul_wrapper.pyx']
 
 
-def main(logger=None, clean=False):
+def main(logger=False, clean=False):
+    if logger:
+        logging.basicConfig(level=logging.DEBUG)
+        logger = logging.getLogger(__file__)
+
     build_dir = tempfile.mkdtemp('mtxmul')
     mod = compile_link_import_py_ext(
         source_files, build_dir=build_dir, logger=logger)
@@ -40,9 +45,4 @@ def main(logger=None, clean=False):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__file__)
-    clean = False
-    if len(sys.argv) > 1:
-        clean = sys.argv[1] == 'clean'
-    main(logger=logger, clean=clean)
+    argh.dispatch_command(main)
