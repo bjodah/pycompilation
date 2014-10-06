@@ -24,7 +24,8 @@ from .util import (
     HasMetaData, MetaReaderWriter, missing_or_other_newer, get_abspath,
     expand_collection_in_dict, make_dirs, copy, Glob, ArbitraryDepthGlob,
     glob_at_depth, CompilationError, FileNotFoundError,
-    import_module_from_file, uniquify, find_binary_of_command, pyx_is_cplus
+    import_module_from_file, uniquify, find_binary_of_command, pyx_is_cplus,
+    md5_of_string, md5_of_file
 )
 
 if os.name == 'posix':  # Future improvement to make cross-platform
@@ -333,9 +334,9 @@ class CompilerRunner(object):
             self.sources
         )
         if self.run_linker:
-            cmd += ['-L'+x for x in self.lib_dirs] + \
-                   ['-l'+x for x in self.libs] + \
-                   self.linkline
+            cmd += (['-L'+x for x in self.lib_dirs] +
+                    ['-l'+x for x in self.libs] +
+                    self.linkline)
         counted = []
         for envvar in re.findall('\$\{(\w+)\}', ' '.join(cmd)):
             if os.getenv(envvar) is None:
@@ -852,7 +853,7 @@ extension_mapping = {
     '.c': (CCompilerRunner, None),
     '.cpp': (CppCompilerRunner, None),
     '.cxx': (CppCompilerRunner, None),
-    '.f'  : (FortranCompilerRunner, None),
+    '.f': (FortranCompilerRunner, None),
     '.for': (FortranCompilerRunner, None),
     '.ftn': (FortranCompilerRunner, None),
     '.f90': (FortranCompilerRunner, 'f2008'),  # ifort only knows about .f90
@@ -1098,8 +1099,8 @@ def compile_link_import_py_ext(
 
     Examples
     ========
-    >>> mod = compile_link_import_py_ext(['fft.f90', 'convolution.cpp',
-        'fft_wrapper.pyx'])  # doctest: +SKIP
+    >>> mod = compile_link_import_py_ext(['fft.f90', 'convolution.cpp',\
+        'fft_wrapper.pyx'], only_update=True)  # doctest: +SKIP
     >>> Aprim = mod.fft(A)  # doctest: +SKIP
 
     """
@@ -1126,7 +1127,7 @@ def compile_link_import_py_ext(
     return mod
 
 
-def compile_link_import_strings(codes, **kwargs):
+def compile_link_import_strings(codes, build_dir=None, **kwargs):
     """
     Creates a temporary directory and dumps, compiles and links
     provided source code.
@@ -1134,24 +1135,37 @@ def compile_link_import_strings(codes, **kwargs):
     Parameters
     ==========
     codes: iterable of name/source pair tuples
+    build_dir: string
+        path to cache_dir
     **kwargs:
         keyword arguments passed onto `compile_link_import_py_ext`
     """
-    # import base64
-    # import uuid
-    # name = name or "_" + base64.b32encode(
-    #     uuid.uuid4().bytes).decode().strip("=")
-    build_dir = tempfile.mkdtemp()  #name)
+    build_dir = build_dir or tempfile.mkdtemp()
+    if not os.path.isdir(build_dir):
+        raise OSError("Non-existent directory: ", build_dir)
+
     source_files = []
     if kwargs.get('logger', False) is True:
         import logging
         logging.basicConfig(level=logging.DEBUG)
         kwargs['logger'] = logging.getLogger()
 
+    only_update = kwargs.get('only_update', True)
     for name, code_ in codes:
         dest = os.path.join(build_dir, name)
-        with open(dest, 'wt') as fh:
-            fh.write(code_)
-            source_files.append(dest)
+        differs = True
+        md5_in_mem = md5_of_string(code_.encode('utf-8')).hexdigest()
+        if only_update and os.path.exists(dest):
+            if os.path.exists(dest+'.md5'):
+                md5_on_disk = open(dest+'.md5', 'rt').read()
+            else:
+                md5_on_disk = md5_of_file(dest).hexdigest()
+            differs = md5_on_disk != md5_in_mem
+        if not only_update or differs:
+            with open(dest, 'wt') as fh:
+                fh.write(code_)
+                open(dest+'.md5', 'wt').write(md5_in_mem)
+        source_files.append(dest)
+
     return compile_link_import_py_ext(
         source_files, build_dir=build_dir, **kwargs)

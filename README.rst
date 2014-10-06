@@ -50,6 +50,7 @@ For the examples to work you need:
  - A C compiler (e.g. gcc)
  - A C++ compiler (e.g. g++)
  - A Fortran complier (e.g. gfortran)
+ - appdirs (python module)
 
 License
 =======
