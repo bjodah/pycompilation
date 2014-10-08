@@ -1118,7 +1118,7 @@ def compile_link_import_py_ext(
     try:
         mod = import_module_from_file(os.path.join(build_dir, extname), srcs)
     except ImportError:
-        objs = compile_sources(map(get_abspath, srcs), destdir=build_dir,
+        objs = compile_sources(list(map(get_abspath, srcs)), destdir=build_dir,
                                cwd=build_dir, **compile_kwargs)
         so = link_py_so(
             objs, cwd=build_dir, fort=any_fort(srcs), cplus=any_cplus(srcs),

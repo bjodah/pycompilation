@@ -11,9 +11,11 @@ TAGS
 */#*#
 */*.so
 build/
+dist/
 .cache/
 .metadata_*
 doc/_build/
 examples/.meta*
 examples/*_wrapper.c
 examples/*build*
+MANIFEST
