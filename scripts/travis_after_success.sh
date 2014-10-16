@@ -3,7 +3,7 @@ set -x # Verbose
 MINICONDA_HOME=$1
 
 GH_USER=bjodah
-GH_REPO=pybestprac
+GH_REPO=pycompilation
 BINSTAR_USER=$GH_USER
 if [ "$TRAVIS_REPO_SLUG" == "${GH_USER}/${GH_REPO}" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_BRANCH" == "master" ]; then
     # Push wheel to binstar.org (for all Python versions)
