@@ -10,6 +10,10 @@ pycompilation
    :target: https://readthedocs.org/projects/pycompilation/?badge=latest
    :alt: Documentation Status
 
+.. image:: https://binstar.org/bjodah/pycompilation/badges/version.svg
+   :target:https://binstar.org/bjodah/pycompilation
+   :alt: Binstar Badge
+
 
 pycompilation bundles python convenience classes and functions for performing compilation
 and linking on the fly from python. Developed to simplify working with code-generation,
@@ -29,10 +33,10 @@ Look at ``examples/*_main.py`` which show how pycompilation can be used.
 
 You may also look at other projects which uses pycompilation:
 
- - pycodeexport_
- - cInterpol_ 
- - finitediff_ 
- - symvarsub_
+- pycodeexport_
+- cInterpol_ 
+- finitediff_ 
+- symvarsub_
 
 .. _pycodeexport: http://github.com/bjodah/pycodeexport
 .. _cInterpol: http://github.com/bjodah/cinterpol
@@ -43,14 +47,16 @@ Documentation
 =============
 You find the latest documentation at http://pycompilation.readthedocs.org/
 
+
 Dependencies
 ============
 For the examples to work you need:
- - Cython
- - A C compiler (e.g. gcc)
- - A C++ compiler (e.g. g++)
- - A Fortran complier (e.g. gfortran)
- - appdirs (python module)
+
+- Cython
+- A C compiler (e.g. gcc)
+- A C++ compiler (e.g. g++)
+- A Fortran complier (e.g. gfortran)
+- appdirs (python module)
 
 License
 =======

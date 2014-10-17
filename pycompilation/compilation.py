@@ -770,6 +770,16 @@ def link_py_so(obj_files, so_file=None, cwd=None, libs=None,
     # Grab lib_dirs
     lib_dirs += [x[2:] for x in filter(
         lambda x: x.startswith('-L'), flags)]
+
+    # This is a work around when collect2 fails:
+    #     /usr/bin/ld: cannot find -lpython3.4m
+    #     collect2: error: ld returned 1 exit status
+    # even though `gcc --print-search-dirs` suggests it should work..
+    for env_lib_dir in os.environ.get('LIBRARY_PATH', '').split(':'):
+        if env_lib_dir == '':
+            continue
+        lib_dirs.append(env_lib_dir)
+
     flags = list(filter(lambda x: not x.startswith('-L'), flags))
 
     flags.extend(kwargs.pop('flags', []))
