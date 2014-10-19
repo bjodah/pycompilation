@@ -1,10 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from distutils.core import setup
 
-name_ = 'pycompilation'
-version_ = '0.3.7'
+pkg_name = 'pycompilation'
+__version__ = '0.3.7'
+IS_RELEASE=os.environ.get("IS_RELEASE", "0")
+if IS_RELEASE != "1":
+    __version__ += '.dev' # PEP386
+if os.environ.get('CONDA_BUILD', None):
+    with open('__conda_version__.txt', 'w') as f:
+        if IS_RELEASE:
+            f.write(__version__)
+        else:
+            f.write(__version__ + '.dev')
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -22,15 +33,15 @@ classifiers = [
 ]
 
 setup(
-    name=name_,
-    version=version_,
+    name=pkg_name,
+    version=__version__,
     author='Björn Dahlgren',
     author_email='bjodah@DELETEMEgmail.com',
     description='Package for compilation (meta programming).',
     license="BSD",
-    url='https://github.com/bjodah/'+name_,
-    download_url='https://github.com/bjodah/'+name_ +
-    '/archive/v'+version_+'.tar.gz',
-    packages=[name_],
+    url='https://github.com/bjodah/'+pkg_name,
+    download_url='https://github.com/bjodah/'+pkg_name +
+    '/archive/v'+__version__+'.tar.gz',
+    packages=[pkg_name],
     classifiers=classifiers
 )
