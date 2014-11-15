@@ -182,8 +182,6 @@ class pc_build_ext(build_ext.build_ext):
                 sources,
                 cwd=self.build_temp,
                 include_dirs=list(map(get_abspath, ext.include_dirs)),
-                library_dirs=list(map(get_abspath, ext.library_dirs)),
-                libraries=ext.libraries,
                 logger=ext.logger,
                 only_update=ext.only_update,
                 **ext.pycompilation_compile_kwargs
@@ -210,6 +208,8 @@ class pc_build_ext(build_ext.build_ext):
                     src_objs+ext.extra_objects,
                     cwd=self.build_temp,
                     flags=ext.extra_link_args,
+                    library_dirs=list(map(get_abspath, ext.library_dirs)),
+                    libraries=ext.libraries,
                     fort=any_fort(sources),
                     cplus=(((ext.language or '').lower() == 'c++') or
                            any_cplus(sources)),
