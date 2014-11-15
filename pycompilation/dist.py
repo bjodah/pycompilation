@@ -164,13 +164,13 @@ class pc_build_ext(build_ext.build_ext):
                 ext.pycompilation_compile_kwargs['flags'] =\
                     ext.extra_compile_args,
             if ext.define_macros:
-                ext.pycompilation_compile_kwargs['defmacros'] =\
+                ext.pycompilation_compile_kwargs['define'] =\
                     list(set(ext.define_macros +
-                             ext.pycompilation_compile_kwargs['defmacros']))
+                             ext.pycompilation_compile_kwargs['define']))
             if ext.undef_macros:
-                ext.pycompilation_compile_kwargs['undefmacros'] =\
+                ext.pycompilation_compile_kwargs['undef'] =\
                     list(set(ext.undef_macros +
-                             ext.pycompilation_compile_kwargs['undefmacros']))
+                             ext.pycompilation_compile_kwargs['undef']))
 
             # Run build_callbaks if any were provided
             for cb, args, kwargs in ext.build_callbacks:

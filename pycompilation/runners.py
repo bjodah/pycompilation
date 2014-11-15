@@ -6,7 +6,8 @@ import subprocess
 
 from .util import (
     HasMetaData, get_abspath, FileNotFoundError,
-    find_binary_of_command, uniquify, missing_or_other_newer
+    find_binary_of_command, uniquify, missing_or_other_newer,
+    CompilationError,
 )
 
 
@@ -318,8 +319,8 @@ class CompilerRunner(object):
 
         # Error handling
         if self.cmd_returncode != 0:
-            msg = "Error executing '{0}' in {1}. Command exited with status {2}" + \
-                  " after givning the following output: {3}\n"
+            msg = u"Error executing '{0}' in {1}. Command exited with status {2}" + \
+                  u" after givning the following output: {3}\n"
             raise CompilationError(msg.format(
                 u' '.join(self.cmd()), self.cwd, str(self.cmd_returncode),
                 self.cmd_outerr))
