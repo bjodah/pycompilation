@@ -257,4 +257,3 @@ class pc_sdist(sdist.sdist):
                         self.render_callback, skip_copy=True))
             ext.sources = _sources
         sdist.sdist.run(self)
-        #super(pc_sdist, self).run()
