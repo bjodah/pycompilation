@@ -65,7 +65,7 @@ def timeit(cb, data):
 def main():
     mod = compile_link_import_strings(
         sources_, options=['fast', 'warn', 'pic'], std='c99',
-        logger=True, inc_dirs=[np.get_include()])
+        logger=True, include_dirs=[np.get_include()])
     data = np.random.random(1024*1024*8)  # 64 MB of RAM needed..
     t_mod, res_mod = timeit(mod.sigmoid, data)
     t_npy, res_npy = timeit(npy, data)
