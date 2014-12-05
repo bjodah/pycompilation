@@ -315,7 +315,7 @@ def simple_cythonize(src, destdir=None, cwd=None, logger=None,
     cwd = cwd or '.'
     destdir = destdir or '.'
 
-    ext = '.cpp' if cy_kwargs['cplus'] else '.c'
+    ext = '.cpp' if cy_kwargs.get('cplus', False) else '.c'
     c_name = os.path.splitext(os.path.basename(src))[0] + ext
 
     dstfile = os.path.join(destdir, c_name)

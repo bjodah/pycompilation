@@ -7,17 +7,17 @@ Interaction with distutils
 import os
 import re
 
-from distutils.command import build_ext
+from distutils.command import build_ext, sdist
 from distutils.extension import Extension
 
 from .compilation import (
     extension_mapping, FortranCompilerRunner, CppCompilerRunner,
     compile_sources, link_py_so, any_fort,
-    any_cplus
+    any_cplus, simple_cythonize
 )
 from .util import (
     copy, get_abspath, import_module_from_file,
-    MetaReaderWriter, FileNotFoundError
+    MetaReaderWriter, FileNotFoundError, pyx_is_cplus, make_dirs
 )
 
 
@@ -70,15 +70,50 @@ def PCExtension(*args, **kwargs):
     return instance
 
 
-class pc_build_ext(build_ext.build_ext):
+def _copy_or_render_source(ext, f, output_dir, render_callback,
+                           skip_copy=False):
     """
-    build_ext class for PCExtension
-    Support for template_regexps
+    Tries to do regex match for each (pattern, target, subsd) tuple
+    in ext.template_regexps for file f.
     """
+    # Either render a template or copy the source
+    dirname = os.path.dirname(f)
+    filename = os.path.basename(f)
+    for pattern, target, subsd in ext.template_regexps:
+        if re.match(pattern, filename):
+            tgt = os.path.join(dirname, re.sub(
+                pattern, target, filename))
+            rw = MetaReaderWriter('.metadata_subsd')
+            try:
+                prev_subsd = rw.get_from_metadata_file(output_dir, f)
+            except (FileNotFoundError, KeyError):
+                prev_subsd = None
 
-    def render_template_to(self, src, dest, subsd, only_update=False,
-                           prev_subsd=None, create_dest_dirs=True,
-                           logger=None):
+            render_callback(
+                get_abspath(f),
+                os.path.join(output_dir, tgt),
+                subsd,
+                only_update=ext.only_update,
+                prev_subsd=prev_subsd,
+                create_dest_dirs=True,
+                logger=ext.logger)
+            rw.save_to_metadata_file(output_dir, f, subsd)
+            return tgt
+    else:
+        if not skip_copy:
+            copy(f,
+                 os.path.join(output_dir,
+                              os.path.dirname(f)),
+                 only_update=ext.only_update,
+                 dest_is_dir=True,
+                 create_dest_dirs=True,
+                 logger=ext.logger)
+        return f
+
+
+def render_python_template_to(src, dest, subsd, only_update=False,
+                              prev_subsd=None, create_dest_dirs=True,
+                              logger=None):
         """
         Overload this function if you want to use a template engine such as
         e.g. mako.
@@ -103,39 +138,14 @@ class pc_build_ext(build_ext.build_ext):
         with open(dest, 'wt') as ofh:
             ofh.write(data % subsd)
 
-    def _copy_or_render_source(self, ext, f):
-        # Either render a template or copy the source
-        dirname = os.path.dirname(f)
-        filename = os.path.basename(f)
-        for pattern, target, subsd in ext.template_regexps:
-            if re.match(pattern, filename):
-                tgt = os.path.join(dirname, re.sub(
-                    pattern, target, filename))
-                rw = MetaReaderWriter('.metadata_subsd')
-                try:
-                    prev_subsd = rw.get_from_metadata_file(self.build_temp, f)
-                except (FileNotFoundError, KeyError):
-                    prev_subsd = None
 
-                self.render_template_to(
-                    get_abspath(f),
-                    os.path.join(self.build_temp, tgt),
-                    subsd,
-                    only_update=ext.only_update,
-                    prev_subsd=prev_subsd,
-                    create_dest_dirs=True,
-                    logger=ext.logger)
-                rw.save_to_metadata_file(self.build_temp, f, subsd)
-                return tgt
-        else:
-            copy(f,
-                 os.path.join(self.build_temp,
-                              os.path.dirname(f)),
-                 only_update=ext.only_update,
-                 dest_is_dir=True,
-                 create_dest_dirs=True,
-                 logger=ext.logger)
-            return f
+class pc_build_ext(build_ext.build_ext):
+    """
+    build_ext class for PCExtension
+    Support for template_regexps
+    """
+
+    render_callback = staticmethod(render_python_template_to)
 
     def run(self):
         if self.dry_run:
@@ -145,7 +155,8 @@ class pc_build_ext(build_ext.build_ext):
             if ext.logger:
                 ext.logger.info("Copying/rendering sources...")
             for f in ext.sources:
-                sources.append(self._copy_or_render_source(ext, f))
+                sources.append(_copy_or_render_source(
+                    ext, f, self.build_temp, self.render_callback))
 
             if ext.logger:
                 ext.logger.info("Copying build_files...")
@@ -222,3 +233,28 @@ class pc_build_ext(build_ext.build_ext):
                     only_update=ext.only_update,
                     create_dest_dirs=True, logger=ext.logger
                 )
+
+
+class pc_sdist(sdist.sdist):
+
+    render_callback = staticmethod(render_python_template_to)
+
+    def run(self):
+        for ext in self.distribution.ext_modules:
+            _sources = []
+            for src in ext.sources:
+                if src.endswith('.pyx'):
+                    cy_kwargs = {
+                        'cplus': pyx_is_cplus(src),
+                        'include_path': ext.include_dirs
+                    }
+                    _sources.append(simple_cythonize(
+                        src, os.path.dirname(src), **cy_kwargs))
+                else:
+                    # Copy or render
+                    _sources.append(_copy_or_render_source(
+                        ext, src, '.',
+                        self.render_callback, skip_copy=True))
+            ext.sources = _sources
+        sdist.sdist.run(self)
+        #super(pc_sdist, self).run()

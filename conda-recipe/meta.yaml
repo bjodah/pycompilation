@@ -1,6 +1,6 @@
 package:
   name: pycompilation
-  version: "0.3.7"
+  version: "0.4.0"
 
 source:
   url: https://github.com/bjodah/pycompilation/archive/master.zip

@@ -1,4 +1,4 @@
-__version__ = '0.4.0.dev'
+__version__ = '0.4.0'
 
 from .compilation import (
     compile_sources, link_py_so, src2obj,

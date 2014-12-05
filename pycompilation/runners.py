@@ -268,8 +268,8 @@ class CompilerRunner(object):
                     counted.append(envvar)
                     msg = "Environment variable '{}' undefined.".format(
                         envvar)
-                    raise CompilationError(msg)
                     self.logger.error(msg)
+                    raise CompilationError(msg)
         return cmd
 
     def run(self):
