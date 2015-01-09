@@ -21,6 +21,7 @@ from __future__ import (
 
 import glob
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -39,14 +40,16 @@ from .runners import (
     FortranCompilerRunner
 )
 
+from distutils.sysconfig import get_config_var, get_config_vars
+
+sharedext = get_config_var('SO')
+
 if os.name == 'posix':  # Future improvement to make cross-platform
-    flagprefix = '-'
+    # flagprefix = '-'
     objext = '.o'
-    sharedext = '.so'
 elif os.name == 'nt':
     # flagprefix = '/' <-- let's assume mingw compilers...
     objext = '.obj'
-    sharedext = '.dll'
 else:
     raise ImportError("Unknown os.name: {}".format(os.name))
 
@@ -90,7 +93,7 @@ def compile_sources(files, CompilerRunner_=None,
     Compile source code files to object files.
 
     Parameters
-    ==========
+    ----------
     files: iterable of path strings
         source files, if cwd is given, the paths are taken as relative.
     CompilerRunner_: CompilerRunner instance (optional)
@@ -155,7 +158,7 @@ def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
     Link object files.
 
     Parameters
-    ==========
+    ----------
     obj_files: iterable of path strings
     out_file: path string (optional)
         path to executable/shared library, if missing
@@ -175,7 +178,7 @@ def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
         keyword arguments passed onto CompilerRunner_
 
     Returns
-    =======
+    -------
     The absolute to the generated shared object / executable
 
     """
@@ -224,7 +227,7 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
     Link python extension module (shared object) for importing
 
     Parameters
-    ==========
+    ----------
     obj_files: iterable of path strings
         object files to be linked
     so_file: path string
@@ -244,38 +247,52 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
         keyword arguments passed onto `link(...)`
 
     Returns
-    =======
+    -------
     Absolute path to the generate shared object
     """
     libraries = libraries or []
 
-    from distutils.sysconfig import get_config_vars
     include_dirs = kwargs.pop('include_dirs', [])
     library_dirs = kwargs.pop('library_dirs', [])
 
-    # Anaconda Win 32 returns a very terse dict from:
-    # get_config_vars(), hence we are (arbitrarily assuming mingw32
-    # in order to at least have a small chance of build succeeding)
+    # BLDLIBRARY = get_config_vars('BLDLIBRARY')[0] or (
+    #     '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
+    # BLDSHARED = get_config_vars('BLDSHARED')[0] or 'gcc -shared'
+    # libraries += [x[2:] for x in BLDLIBRARY.split() if x.startswith('-l')]
+    # cc = BLDSHARED
+    pythonlib_re = re.compile('^python[0-9]?.[0-9]?')
+    if not any(map(pythonlib_re.match, libraries)):
+        # Anaconda Win 32 returns a very terse dict from:
+        # get_config_vars(), hence we are (arbitrarily assuming mingw32
+        # in order to at least have a small chance of build succeeding)
+        BLDLIBRARY_flags = get_config_vars('BLDLIBRARY')[0].split()
+        pylib = list(filter(lambda s: 'python' in s, BLDLIBRARY_flags))
+        if len(pylib) == 1:
+            libraries.append(pylib[0][2:])
+        else:
+            # this will miss X.Y[m/u/d]
+            libraries.append('python' + str(sys.version_info.major) +
+                             '.' + str(sys.version_info.minor))
 
-    BLDLIBRARY = get_config_vars('BLDLIBRARY')[0] or (
-        '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
-    BLDSHARED = get_config_vars('BLDSHARED')[0] or 'gcc -shared'
-    libraries += [x[2:] for x in BLDLIBRARY.split() if x.startswith('-l')]
-    cc = BLDSHARED
+    flags = kwargs.pop('flags', [])
+    needed_flags = ('-pthread',)
+    for flag in needed_flags:
+        if flag not in flags:
+            flags.append(flag)
 
     # We want something like: gcc, ['-pthread', ...
-    compilername, flags = cc.split()[0], cc.split()[1:]
+    # compilername, flags = cc.split()[0], cc.split()[1:]
 
-    # Grab include_dirs
-    include_dirs += list(filter(lambda x: x.startswith('-I'), flags))
-    flags = list(filter(lambda x: not x.startswith('-I'), flags))
+    # # Grab include_dirs
+    # include_dirs += list(filter(lambda x: x.startswith('-I'), flags))
+    # flags = list(filter(lambda x: not x.startswith('-I'), flags))
 
-    # Grab library_dirs
-    library_dirs += [x[2:] for x in filter(
-        lambda x: x.startswith('-L'), flags)]
-    flags = list(filter(lambda x: not x.startswith('-L'), flags))
+    # # Grab library_dirs
+    # library_dirs += [x[2:] for x in filter(
+    #     lambda x: x.startswith('-L'), flags)]
+    # flags = list(filter(lambda x: not x.startswith('-L'), flags))
 
-    flags.extend(kwargs.pop('flags', []))
+    # flags.extend(kwargs.pop('flags', []))
 
     return link(obj_files, shared=True, flags=flags, cwd=cwd,
                 cplus=cplus, fort=fort, include_dirs=include_dirs,
@@ -289,7 +306,7 @@ def simple_cythonize(src, destdir=None, cwd=None, logger=None,
     Generates a C file from a Cython source file.
 
     Parameters
-    ==========
+    ----------
     src: path string
         path to Cython source
     destdir: path string (optional)
@@ -375,7 +392,7 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
     are dispatched to pyx2obj.
 
     Parameters
-    ==========
+    ----------
     srcpath: path string
         path to source file
     CompilerRunner_: pycompilation.CompilerRunner subclass (optional)
@@ -407,8 +424,10 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
 
     include_dirs = kwargs.pop('include_dirs', [])
     if inc_py:
-        from distutils.sysconfig import get_python_inc, get_config_vars
-        include_dirs += [get_python_inc()]
+        from distutils.sysconfig import get_python_inc
+        py_inc_dir = get_python_inc()
+        if py_inc_dir not in include_dirs:
+            include_dirs.append(py_inc_dir)
 
     if ext.lower() == '.pyx':
         return pyx2obj(srcpath, objpath=objpath,
@@ -422,6 +441,8 @@ def src2obj(srcpath, CompilerRunner_=None, objpath=None,
 
     # src2obj implies not running the linker...
     run_linker = kwargs.pop('run_linker', False)
+    if run_linker:
+        raise CompilationError("src2obj called with run_linker=True")
 
     if only_update:
         if not missing_or_other_newer(objpath, srcpath, cwd=cwd):
@@ -451,7 +472,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     destination
 
     Parameters
-    ==========
+    ----------
     pyxpath: path string
         path to Cython source file
     objpath: path string (optional)
@@ -484,7 +505,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         keyword arguments passed onto src2obj
 
     Returns
-    =======
+    -------
     Absolute path of generated object file.
 
     """
@@ -525,16 +546,26 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
             include_dirs.append(numpy_inc_dir)
 
     flags = kwargs.pop('flags', [])
-    flags.extend(['-fno-strict-aliasing'])
+    needed_flags = ('-fwrapv', '-pthread')
+    if not cplus:
+        needed_flags += ('-Wstrict-prototypes',)  # not really needed..
+    for flag in needed_flags:
+        if flag not in flags:
+            flags.append(flag)
+
     options = kwargs.pop('options', [])
+
+    if kwargs.pop('strict_aliasing', False):
+        raise CompilationError("Cython req. strict aliasing to be disabled.")
 
     if 'pic' not in options:
         options.append('pic')
     if 'warn' not in options:
         options.append('warn')
 
+    # Let's be explicit about standard
     if cplus:
-        std = kwargs.pop('std', 'c++0x')
+        std = kwargs.pop('std', 'c++98')
     else:
         std = kwargs.pop('std', 'c99')
 
@@ -550,6 +581,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         options=options,
         logger=logger,
         inc_py=True,
+        strict_aliasing=False,
         **kwargs)
 
 
@@ -580,7 +612,7 @@ def compile_link_import_py_ext(
     are not recompiled but instead it is imported.
 
     Parameters
-    ==========
+    ----------
     srcs: string
         list of paths to sources
     extname: string
@@ -597,11 +629,11 @@ def compile_link_import_py_ext(
         and link_kwargs useful for convenience e.g. when passing logger
 
     Returns
-    =======
+    -------
     the imported module
 
     Examples
-    ========
+    --------
     >>> mod = compile_link_import_py_ext(['fft.f90', 'convolution.cpp',\
         'fft_wrapper.pyx'], only_update=True)  # doctest: +SKIP
     >>> Aprim = mod.fft(A)  # doctest: +SKIP
@@ -636,10 +668,10 @@ def compile_link_import_strings(codes, build_dir=None, **kwargs):
     provided source code.
 
     Parameters
-    ==========
+    ----------
     codes: iterable of name/source pair tuples
-    build_dir: string
-        path to cache_dir
+    build_dir: string (default: None)
+        path to cache_dir. None implies use a temporary directory.
     **kwargs:
         keyword arguments passed onto `compile_link_import_py_ext`
     """
