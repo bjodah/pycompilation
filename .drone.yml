@@ -1,0 +1,9 @@
+# contains git, wget, gcc, g++, gfortran, cmake, valgrind, miniconda
+image: bjodah/trusty-drone-miniconda34
+git:
+    path: github.com/bjodah/pycompilation
+script:
+  - export PATH=$MINICONDA_PATH/bin:$PATH
+  - conda config --set always_yes yes --set changeps1 no
+  - /bin/bash -x ./scripts/ci_conda.sh 2.7 27 pycompilation_testenv27 1
+  - /bin/bash -x ./scripts/ci_conda.sh 3.4 34 pycompilation_testenv34 1

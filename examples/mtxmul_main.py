@@ -28,7 +28,8 @@ def main(logger=False, clean=False):
 
     build_dir = tempfile.mkdtemp('mtxmul')
     mod = compile_link_import_py_ext(
-        source_files, build_dir=build_dir, logger=logger)
+        source_files, build_dir=build_dir, logger=logger,
+        include_dirs=[np.get_include()])
 
     A = np.random.random((7, 9))
     B = np.random.random((9, 13))
