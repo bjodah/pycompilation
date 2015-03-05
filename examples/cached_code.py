@@ -9,6 +9,8 @@ from time import sleep
 from textwrap import dedent
 
 from appdirs import user_cache_dir
+import numpy as np
+
 from pycompilation import compile_link_import_strings
 
 # Setup a cache dir with OS conventional path (use appdirs)
@@ -155,4 +157,5 @@ class MyPoly(DiskCache(cachedir, methods=("diff", "as_fortran_module"))):
         return compile_link_import_strings([
             (self.__class__.__name__+"_module.f90", self.as_fortran_module()),
             ("_"+self.__class__.__name__+".pyx", self.wrapper_code())
-        ], build_dir=build_dir, only_update=True, logger=True)
+        ], build_dir=build_dir, include_dirs=[np.get_include()],
+                                           only_update=True, logger=True)

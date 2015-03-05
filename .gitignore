@@ -10,11 +10,14 @@ TAGS
 */.#*
 */#*#
 */*.so
+doc/_build/
 build/
 dist/
 .cache/
+htmlcov/
 .metadata_*
-doc/_build/
+.coverage
+examples/.coverage*
 examples/.meta*
 examples/*_wrapper.c
 examples/*build*

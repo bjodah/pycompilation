@@ -310,6 +310,7 @@ def import_module_from_file(filename, only_if_newer_than=None):
     import imp
     path, name = os.path.split(filename)
     name, ext = os.path.splitext(name)
+    name = name.split('.')[0]
     fobj, filename, data = imp.find_module(name, [path])
     if only_if_newer_than:
         for dep in only_if_newer_than:

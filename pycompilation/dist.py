@@ -11,12 +11,11 @@ from distutils.command import build_ext, sdist
 from distutils.extension import Extension
 
 from .compilation import (
-    extension_mapping, FortranCompilerRunner, CppCompilerRunner,
     compile_sources, link_py_so, any_fort,
     any_cplus, simple_cythonize
 )
 from .util import (
-    copy, get_abspath, import_module_from_file,
+    copy, get_abspath, missing_or_other_newer,
     MetaReaderWriter, FileNotFoundError, pyx_is_cplus, make_dirs
 )
 
@@ -124,7 +123,7 @@ def render_python_template_to(src, dest, subsd, only_update=False,
                     if logger:
                         msg = ("Did not re-render {}. "
                                "(destination newer + same dict)")
-                        logger.info(msg.format(template))
+                        logger.info(msg.format(src))
                     return
 
         with open(src, 'rt') as ifh:

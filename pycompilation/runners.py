@@ -122,8 +122,9 @@ class CompilerRunner(object):
     def __init__(self, sources, out, flags=None, run_linker=True,
                  compiler=None, cwd=None, include_dirs=None, libraries=None,
                  library_dirs=None, std=None, options=None, define=None,
-                 undef=None, logger=None, preferred_vendor=None,
-                 metadir=None, lib_options=None, only_update=False, **kwargs):
+                 undef=None, strict_aliasing=None, logger=None,
+                 preferred_vendor=None, metadir=None, lib_options=None,
+                 only_update=False, **kwargs):
 
         cwd = cwd or '.'
         metadir = get_abspath(metadir or '.', cwd=cwd)
@@ -198,6 +199,30 @@ class CompilerRunner(object):
             self.libraries.extend(
                 self.lib_dict[self.compiler_name][lib_opt])
 
+        if strict_aliasing is not None:
+            nsa_re = re.compile("no-strict-aliasing$")
+            sa_re = re.compile("strict-aliasing$")
+            if strict_aliasing is True:
+                if any(map(nsa_re.match, flags)):
+                    raise CompilationError("Strict aliasing cannot be" +
+                                           " both enforced and disabled")
+                elif any(map(sa_re.match, flags)):
+                    pass  # already enforced
+                else:
+                    flags.append('-fstrict-aliasing')
+            elif strict_aliasing is False:
+                if any(map(nsa_re.match, flags)):
+                    pass  # already disabled
+                else:
+                    if any(map(sa_re.match, flags)):
+                        raise CompilationError("Strict aliasing cannot be" +
+                                               " both enforced and disabled")
+                    else:
+                        flags.append('-fno-strict-aliasing')
+            else:
+                raise ValueError("Unknown strict_aliasing={}".format(
+                    strict_aliasing))
+
     @classmethod
     def find_compiler(cls, preferred_vendor, metadir, cwd,
                       use_meta=True):
@@ -240,7 +265,7 @@ class CompilerRunner(object):
                 metadir, 'vendor',
                 cls.compiler_name_vendor_mapping[name])
             if cls.logger:
-                logger.info(
+                cls.logger.info(
                     'Wrote choice of compiler to: metadir')
         return name, path, cls.compiler_name_vendor_mapping[name]
 
@@ -319,8 +344,8 @@ class CompilerRunner(object):
 
         # Error handling
         if self.cmd_returncode != 0:
-            msg = u"Error executing '{0}' in {1}. Command exited with status {2}" + \
-                  u" after givning the following output: {3}\n"
+            msg = u"Error executing '{0}' in {1}. Command exited with" + \
+                  u" status {2} after givning the following output: {3}\n"
             raise CompilationError(msg.format(
                 u' '.join(self.cmd()), self.cwd, str(self.cmd_returncode),
                 self.cmd_outerr))
@@ -354,18 +379,21 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
             # -march=native not portable and problematic for Mac OSX:
             'fast': ('-O2', '-ffast-math', '-funroll-loops'),
             'openmp': ('-fopenmp',),
+            'debug': ('-g',),
         },
         'icc': {
             'pic': ('-fPIC',),
             'fast': ('-fast',),
             'openmp': ('-openmp',),
             'warn': ('-Wall',),
+            'debug': ('-g',),
         },
         'clang': {
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             'fast': ('-O2', '-ffast-math', '-funroll-loops'),
             'openmp': ('-fopenmp',),
+            'debug': ('-g',),
         },
     }
 
@@ -468,9 +496,11 @@ class FortranCompilerRunner(CompilerRunner, HasMetaData):
     option_flag_dict = {
         'gfortran': {
             'warn': ('-Wall', '-Wextra', '-Wimplicit-interface'),
+            'debug': ('-g',),
         },
         'ifort': {
             'warn': ('-warn', 'all',),
+            'debug': ('-g',),
         },
     }
 
