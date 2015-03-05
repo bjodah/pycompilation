@@ -9,4 +9,4 @@ from .util import (
     import_module_from_file, CompilationError, FileNotFoundError
 )
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'
