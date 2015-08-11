@@ -1,9 +1,9 @@
 package:
   name: pycompilation
-  version: "0.4.1"
+  version: "0.4.2"
 
 source:
-  url: https://github.com/bjodah/pycompilation/archive/master.zip
+  url: https://github.com/bjodah/pycompilation/archive/v0.4.2.tar.gz
 
 # build:
   #preserve_egg_dir: True
