@@ -5,7 +5,7 @@ from distutils.core import setup
 import os
 
 pkg_name = 'pycompilation'
-release_py_path = os.path.join(pkg_name, 'release.py')
+release_py_path = os.path.join(pkg_name, '_release.py')
 exec(open(release_py_path).read())
 
 classifiers = [

@@ -130,7 +130,7 @@ class CompilerRunner(object):
         metadir = get_abspath(metadir or '.', cwd=cwd)
 
         if hasattr(sources, '__iter__'):
-            self.sources = sources
+            self.sources = list(sources)
         else:
             self.sources = [sources]
 

@@ -5,7 +5,7 @@ python:
 # command to install dependencies
 before_install:
   - "sudo apt-get install -qq python-numpy gcc gfortran g++"
-  - 'if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then sudo apt-get install python3-dev; export LIBRARY_PATH=/opt/python/3.4.2/lib:$LIBRARY_PATH; else sudo apt-get install python-dev; fi'
+  - 'if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then sudo apt-get install python3-dev; export LIBRARY_PATH=/opt/python/3.4/lib:$LIBRARY_PATH; else sudo apt-get install python-dev; fi'
 install:
   - "pip install -r requirements.txt"
   - "python -c 'import pycompilation; print(pycompilation.__version__)'"
