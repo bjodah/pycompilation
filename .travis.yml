@@ -6,7 +6,7 @@ before_install:
   - "sudo apt-get install -qq python-numpy gcc gfortran g++"
   - 'if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then sudo apt-get install python3-dev; export LIBRARY_PATH=/opt/python/3.4/lib:$LIBRARY_PATH; else sudo apt-get install python-dev; fi'
 install:
-  - pip install --user -e .[all]
+  - pip install .[all]
 script:
   - PYTHONPATH=$(pwd) py.test --pep8 --doctest-modules --ignore setup.py --ignore doc/conf.py --ignore build/
 notifications:
