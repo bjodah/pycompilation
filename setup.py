@@ -63,11 +63,9 @@ setup_kwargs = dict(
     url='https://github.com/bjodah/'+pkg_name,
     packages=[pkg_name] + tests,
     classifiers=classifiers,
-    install_requires=[
-        'cython', 'appdirs', 'argh', 'joblib', 'pytest', 'numpy'
-    ],
     extras_require={
-        'all': ['Sphinx', 'sphinx_rtd_theme', 'numpydoc', 'pytest-cov', 'pytest-flakes', 'pytest-pep8']
+        'all': ['cython', 'appdirs', 'argh', 'joblib', 'pytest', 'numpy',
+                'Sphinx', 'sphinx_rtd_theme', 'numpydoc', 'pytest-cov', 'pytest-flakes', 'pytest-pep8']
     }
 )
 

@@ -1,24 +1,12 @@
 package:
   name: pycompilation
-  version: "0.4.2"
+  version: "0.4.3.git"
 
 source:
-  url: https://github.com/bjodah/pycompilation/archive/v0.4.2.tar.gz
+  path: ../
 
-# build:
-  #preserve_egg_dir: True
-  #entry_points:
-    # Put any entry points (scripts to be generated automatically) here. The
-    # syntax is module:function.  For example
-    #
-    # - pycompilation = pycompilation:main
-    #
-    # Would create an entry point called pycompilation that calls pycompilation.main()
-
-
-  # If this is a new build for the same version, increment the build
-  # number. If you do not include this key, it defaults to 0.
-  # number: 1
+build:
+  number: 0
 
 requirements:
   build:
@@ -31,7 +19,3 @@ about:
   home: https://github.com/bjodah/pycompilation
   license:  BSD License
   summary: 'Package for compilation (meta programming).'
-
-# See
-# http://docs.continuum.io/conda/build.html for
-# more information about meta.yaml
