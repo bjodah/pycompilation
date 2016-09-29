@@ -3,7 +3,7 @@ pycompilation is a package for meta programming. It aims to support
 multiple compilers: GNU, Intel, PGI.
 """
 
-from .release import __version__
+from ._release import __version__
 
 from .compilation import (
     compile_sources, link_py_so, src2obj,
