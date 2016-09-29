@@ -10,7 +10,7 @@ TAGS
 */.#*
 */#*#
 */*.so
-doc/_build/
+doc/*
 build/
 dist/
 .cache/

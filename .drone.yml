@@ -1,9 +1,19 @@
-# contains git, wget, gcc, g++, gfortran, cmake, valgrind, miniconda
-image: bjodah/trusty-drone-miniconda34
-git:
-    path: github.com/bjodah/pycompilation
-script:
-  - export PATH=$MINICONDA_PATH/bin:$PATH
-  - conda config --set always_yes yes --set changeps1 no
-  - /bin/bash -x ./scripts/ci_conda.sh 2.7 27 pycompilation_testenv27 1
-  - /bin/bash -x ./scripts/ci_conda.sh 3.4 34 pycompilation_testenv34 1
+build:
+  image: bjodah/bjodahimg16base:v1.1
+  commands:
+    - python2 -m pip install --upgrade wheel setuptools
+    - python3 -m pip install --upgrade wheel setuptools
+    - ./scripts/ci.sh pycompilation
+    - PATH=$HOME/.local/bin:$PATH ./scripts/generate_docs.sh
+    - ./scripts/prepare_deploy.sh
+
+deploy:
+
+  rsync:
+    host: hera.physchem.kth.se
+    user: pycompilation
+    port: 22
+    source: deploy/
+    target: ~
+    recursive: true
+    delete: false

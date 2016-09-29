@@ -13,9 +13,8 @@ Make sure you have (on debian based systems):
 python-dev  and/or  python3-dev
 """
 
-from __future__ import (
-    print_function, division, absolute_import, unicode_literals
-)
+from __future__ import print_function, division, absolute_import
+
 
 from pycompilation import compile_link_import_strings
 

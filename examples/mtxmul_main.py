@@ -5,9 +5,7 @@
 Example program showing how to wrap fortran code using Cython
 """
 
-from __future__ import (
-    print_function, division, absolute_import, unicode_literals
-)
+from __future__ import print_function, division, absolute_import
 
 import logging
 import shutil

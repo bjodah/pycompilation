@@ -8,9 +8,7 @@ Note how the complexity is lowered using Cython compared to
 on_the_fly_low_level_main.py
 """
 
-from __future__ import (
-    print_function, division, absolute_import, unicode_literals
-)
+from __future__ import print_function, division, absolute_import
 
 import time
 

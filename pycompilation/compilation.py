@@ -15,9 +15,7 @@ linking mixed C++/Fortran use either Fortran (Intel) or
 C++ (GNU) compiler.
 """
 
-from __future__ import (
-    print_function, division, absolute_import, unicode_literals
-)
+from __future__ import print_function, division, absolute_import
 
 import glob
 import os

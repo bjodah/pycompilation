@@ -2,23 +2,12 @@ language: python
 python:
   - "2.7"
   - "3.4"
-# command to install dependencies
 before_install:
   - "sudo apt-get install -qq python-numpy gcc gfortran g++"
   - 'if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then sudo apt-get install python3-dev; export LIBRARY_PATH=/opt/python/3.4/lib:$LIBRARY_PATH; else sudo apt-get install python-dev; fi'
 install:
-  - "pip install -r requirements.txt"
-  - "python -c 'import pycompilation; print(pycompilation.__version__)'"
-  - gcc --print-search-dirs
-# command to run tests
-script: "PYTHONPATH=`pwd` py.test --pep8 --doctest-modules --ignore setup.py --ignore doc/conf.py --ignore build/"
-after_success:
-  - ./scripts/install_miniconda.sh $TRAVIS_PYTHON_VERSION $HOME/miniconda
-  - export PATH=$HOME/miniconda/bin:$PATH
-  - conda install conda-build
-  - ./scripts/travis_after_success.sh $HOME/miniconda
+  - pip install --user -e .[all]
+script:
+  - PYTHONPATH=$(pwd) py.test --pep8 --doctest-modules --ignore setup.py --ignore doc/conf.py --ignore build/
 notifications:
   email: false
-env:
-  global:
-    - secure: "d/HDVjCJxX4JMDlKEYBCBKZdtaXAh1HA9szseIQQcbhD/a9B0fljJgsbnJ35ljGL/aXMMoRUgVshhU3WAaLhKKl4JABPecWDKSfgePNxxAKk8PK6/91MCy7VimpVA92r1Be7NC/5RBDB9NOocud35dAbonatd6ORk+JrrE6sMoY="
