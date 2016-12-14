@@ -5,7 +5,7 @@ from collections import OrderedDict
 import os
 import re
 import subprocess
-
+import sys
 
 from .util import (
     HasMetaData, get_abspath, FileNotFoundError,
@@ -339,22 +339,25 @@ class CompilerRunner(object):
                              stderr=subprocess.STDOUT,
                              env=env)
         comm = p.communicate()
-        try:
-            self.cmd_outerr = comm[0].decode('utf-8')
-        except UnicodeDecodeError:
-            self.cmd_outerr = comm[0].decode('iso-8859-1')  # win32
+        if sys.version_info[0] == 2:
+            self.cmd_outerr = comm[0]
+        else:
+            try:
+                self.cmd_outerr = comm[0].decode('utf-8')
+            except UnicodeDecodeError:
+                self.cmd_outerr = comm[0].decode('iso-8859-1')  # win32
         self.cmd_returncode = p.returncode
 
         # Error handling
         if self.cmd_returncode != 0:
-            msg = u"Error executing '{0}' in {1}. Command exited with" + \
-                  u" status {2} after givning the following output: {3}\n"
+            msg = "Error executing '{0}' in {1}. Command exited with" + \
+                  " status {2} after givning the following output: {3}\n"
             raise CompilationError(msg.format(
-                u' '.join(self.cmd()), self.cwd, str(self.cmd_returncode),
+                ' '.join(self.cmd()), self.cwd, str(self.cmd_returncode),
                 self.cmd_outerr))
 
         if self.logger and len(self.cmd_outerr) > 0:
-            self.logger.info(u'...with output:\n'+self.cmd_outerr)
+            self.logger.info('...with output:\n'+self.cmd_outerr)
 
         return self.cmd_outerr, self.cmd_returncode
 

@@ -319,7 +319,7 @@ def simple_cythonize(src, destdir=None, cwd=None, logger=None,
         Only cythonize if source is newer. default: False
     **cy_kwargs:
         second argument passed to cy_compile.
-        Generates a .cpp file is cplus=True in cy_kwargs, else a .c file.
+        Generates a .cpp file if cplus=True in cy_kwargs, else a .c file.
     """
     from Cython.Compiler.Main import (
         default_options, CompilationOptions
@@ -350,20 +350,23 @@ def simple_cythonize(src, destdir=None, cwd=None, logger=None,
     else:
         ori_dir = '.'
     os.chdir(cwd)
-
-    cy_options = CompilationOptions(default_options)
-    cy_options.__dict__.update(cy_kwargs)
-    if logger:
-        logger.info("Cythonizing {0} to {1}".format(
-            src, dstfile))
-    cy_compile([src], cy_options, full_module_name=full_module_name)
-    if os.path.abspath(os.path.dirname(
-            src)) != os.path.abspath(destdir):
-        if os.path.exists(dstfile):
-            os.unlink(dstfile)
-        shutil.move(os.path.join(os.path.dirname(src), c_name),
-                    destdir)
-    os.chdir(ori_dir)
+    try:
+        cy_options = CompilationOptions(default_options)
+        cy_options.__dict__.update(cy_kwargs)
+        if logger:
+            logger.info("Cythonizing {0} to {1}".format(
+                src, dstfile))
+        cy_result = cy_compile([src], cy_options, full_module_name=full_module_name)
+        if cy_result.num_errors > 0:
+            raise ValueError("Cython compilation failed.")
+        if os.path.abspath(os.path.dirname(
+                src)) != os.path.abspath(destdir):
+            if os.path.exists(dstfile):
+                os.unlink(dstfile)
+            shutil.move(os.path.join(os.path.dirname(src), c_name),
+                        destdir)
+    finally:
+        os.chdir(ori_dir)
     return dstfile
 
 
@@ -513,17 +516,16 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     interm_c_dir = interm_c_dir or os.path.dirname(objpath)
 
     abs_objpath = get_abspath(objpath, cwd=cwd)
-    abs_pyxpath = get_abspath(pyxpath, cwd=cwd)
 
     if os.path.isdir(abs_objpath):
-        pyx_fname = os.path.basename(abs_pyxpath)
+        pyx_fname = os.path.basename(pyxpath)
         name, ext = os.path.splitext(pyx_fname)
         objpath = os.path.join(objpath, name+objext)
 
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
     if cplus is None:
-        cplus = pyx_is_cplus(abs_pyxpath)
+        cplus = pyx_is_cplus(pyxpath)
     cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
@@ -531,7 +533,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
         cy_kwargs['include_path'] = include_dirs
 
     interm_c_file = simple_cythonize(
-        abs_pyxpath, destdir=interm_c_dir,
+        pyxpath, destdir=interm_c_dir,
         cwd=cwd, logger=logger,
         full_module_name=full_module_name,
         only_update=only_update, **cy_kwargs)
