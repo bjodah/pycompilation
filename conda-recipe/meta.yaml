@@ -1,21 +1,29 @@
+{% set name = "pycompilation" %}
+{% set version = "0.5.0.dev0+git" %}
+
 package:
-  name: pycompilation
-  version: "0.4.3.git"
+  name: {{ name|lower }}
+  version: {{ version }}
 
 source:
-  path: ../dist/pycompilation-0.4.3.tar.gz
+  git_url: ../
 
 build:
   number: 0
+  script: python setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
     - python
-
   run:
     - python
 
+test:
+  imports:
+    - {{ name }}
+
 about:
-  home: https://github.com/bjodah/pycompilation
-  license:  BSD License
   summary: 'Package for compilation (meta programming).'
+  home: https://github.com/bjodah/{{ name }}
+  license: BSD 2-Clause
+  license_file: LICENSE
