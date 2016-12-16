@@ -4,7 +4,7 @@ language: generic
 before_install:
   - sudo apt-get install -qq python-numpy python-dev gcc gfortran g++
 install:
-  - python -m pip install .[all]
+  - python -m pip install --user .[all]
 script:
   - PYTHONPATH=$(pwd) python -m pytest --pep8 --doctest-modules --ignore setup.py --ignore doc/conf.py --ignore build/
 notifications:
