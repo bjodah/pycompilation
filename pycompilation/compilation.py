@@ -253,24 +253,35 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
     include_dirs = kwargs.pop('include_dirs', [])
     library_dirs = kwargs.pop('library_dirs', [])
 
-    # BLDLIBRARY = get_config_vars('BLDLIBRARY')[0] or (
-    #     '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
-    # BLDSHARED = get_config_vars('BLDSHARED')[0] or 'gcc -shared'
-    # libraries += [x[2:] for x in BLDLIBRARY.split() if x.startswith('-l')]
-    # cc = BLDSHARED
-    pythonlib_re = re.compile('^python[0-9]?.[0-9]?')
-    if not any(map(pythonlib_re.match, libraries)):
-        # Anaconda Win 32 returns a very terse dict from:
-        # get_config_vars(), hence we are (arbitrarily assuming mingw32
-        # in order to at least have a small chance of build succeeding)
-        BLDLIBRARY_flags = get_config_vars('BLDLIBRARY')[0].split()
-        pylib = list(filter(lambda s: 'python' in s, BLDLIBRARY_flags))
-        if len(pylib) == 1:
-            libraries.append(pylib[0][2:])
+    # from distutils/command/build_ext.py:
+    if sys.platform == "win32":
+        from distutils._msvccompiler import MSVCCompiler
+        if not isinstance(self.compiler, MSVCCompiler):
+            template = "python%d%d"
+            if self.debug:
+                template = template + '_d'
+            pythonlib = (template %
+                   (sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff))
+            # don't extend ext.libraries, it may be shared with other
+            # extensions, it is a reference to the original list
+            libraries += [pythonlib]
         else:
-            # this will miss X.Y[m/u/d]
-            libraries.append('python' + str(sys.version_info.major) +
-                             '.' + str(sys.version_info.minor))
+            pass
+    elif sys.platform == 'darwin':
+        # Don't use the default code below
+        pass
+    elif sys.platform[:3] == 'aix':
+        # Don't use the default code below
+        pass
+    else:
+        from distutils import sysconfig
+        if sysconfig.get_config_var('Py_ENABLE_SHARED'):
+            pythonlib = 'python{}.{}{}'.format(
+                sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff,
+                sysconfig.get_config_var('ABIFLAGS'))
+            libraries += [pythonlib]
+        else:
+            pass
 
     flags = kwargs.pop('flags', [])
     needed_flags = ('-pthread',)
