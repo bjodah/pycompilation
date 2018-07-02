@@ -23,6 +23,7 @@ import re
 import shutil
 import sys
 import tempfile
+import warnings
 
 from .util import (
     MetaReaderWriter, missing_or_other_newer, get_abspath,
@@ -255,18 +256,7 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
 
     # from distutils/command/build_ext.py:
     if sys.platform == "win32":
-        from distutils._msvccompiler import MSVCCompiler
-        if not isinstance(self.compiler, MSVCCompiler):
-            template = "python%d%d"
-            if self.debug:
-                template = template + '_d'
-            pythonlib = (template %
-                   (sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff))
-            # don't extend ext.libraries, it may be shared with other
-            # extensions, it is a reference to the original list
-            libraries += [pythonlib]
-        else:
-            pass
+        warnings.warn("Windows not yet supported.")
     elif sys.platform == 'darwin':
         # Don't use the default code below
         pass
