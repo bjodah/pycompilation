@@ -19,7 +19,6 @@ from __future__ import print_function, division, absolute_import
 
 import glob
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -39,7 +38,7 @@ from .runners import (
     FortranCompilerRunner
 )
 
-from distutils.sysconfig import get_config_var, get_config_vars
+from distutils.sysconfig import get_config_var
 
 sharedext = get_config_var('SO')
 
