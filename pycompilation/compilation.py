@@ -266,9 +266,10 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
     else:
         from distutils import sysconfig
         if sysconfig.get_config_var('Py_ENABLE_SHARED'):
+            ABIFLAGS = sysconfig.get_config_var('ABIFLAGS')
             pythonlib = 'python{}.{}{}'.format(
                 sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff,
-                sysconfig.get_config_var('ABIFLAGS'))
+                ABIFLAGS or '')
             libraries += [pythonlib]
         else:
             pass
