@@ -19,10 +19,10 @@ from __future__ import print_function, division, absolute_import
 
 import glob
 import os
-import re
 import shutil
 import sys
 import tempfile
+import warnings
 
 from .util import (
     MetaReaderWriter, missing_or_other_newer, get_abspath,
@@ -38,7 +38,7 @@ from .runners import (
     FortranCompilerRunner
 )
 
-from distutils.sysconfig import get_config_var, get_config_vars
+from distutils.sysconfig import get_config_var
 
 sharedext = get_config_var('SO')
 
@@ -253,24 +253,25 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
     include_dirs = kwargs.pop('include_dirs', [])
     library_dirs = kwargs.pop('library_dirs', [])
 
-    # BLDLIBRARY = get_config_vars('BLDLIBRARY')[0] or (
-    #     '-lpython'+str(sys.version_info.major)+str(sys.version_info.minor))
-    # BLDSHARED = get_config_vars('BLDSHARED')[0] or 'gcc -shared'
-    # libraries += [x[2:] for x in BLDLIBRARY.split() if x.startswith('-l')]
-    # cc = BLDSHARED
-    pythonlib_re = re.compile('^python[0-9]?.[0-9]?')
-    if not any(map(pythonlib_re.match, libraries)):
-        # Anaconda Win 32 returns a very terse dict from:
-        # get_config_vars(), hence we are (arbitrarily assuming mingw32
-        # in order to at least have a small chance of build succeeding)
-        BLDLIBRARY_flags = get_config_vars('BLDLIBRARY')[0].split()
-        pylib = list(filter(lambda s: 'python' in s, BLDLIBRARY_flags))
-        if len(pylib) == 1:
-            libraries.append(pylib[0][2:])
+    # from distutils/command/build_ext.py:
+    if sys.platform == "win32":
+        warnings.warn("Windows not yet supported.")
+    elif sys.platform == 'darwin':
+        # Don't use the default code below
+        pass
+    elif sys.platform[:3] == 'aix':
+        # Don't use the default code below
+        pass
+    else:
+        from distutils import sysconfig
+        if sysconfig.get_config_var('Py_ENABLE_SHARED'):
+            ABIFLAGS = sysconfig.get_config_var('ABIFLAGS')
+            pythonlib = 'python{}.{}{}'.format(
+                sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff,
+                ABIFLAGS or '')
+            libraries += [pythonlib]
         else:
-            # this will miss X.Y[m/u/d]
-            libraries.append('python' + str(sys.version_info.major) +
-                             '.' + str(sys.version_info.minor))
+            pass
 
     flags = kwargs.pop('flags', [])
     needed_flags = ('-pthread',)
