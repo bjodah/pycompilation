@@ -452,7 +452,7 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
 
     lib_dict = {
         'g++': {
-            'fortran': ('gfortranbegin', 'gfortran'),
+            'fortran': ('gfortran',),
             'openmp': ('gomp',),
         },
         'icpc': {
