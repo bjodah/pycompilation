@@ -1,5 +1,10 @@
 {% set name = "pycompilation" %}
-{% set version = "0.5.0.dev0+git" %}
+{% set version = GIT_DESCRIBE_TAG | replace("v", "") %}
+{% set number = GIT_DESCRIBE_NUMBER | int %}
+{% if number > 0 %}
+   {% set version = version + ".post" + GIT_DESCRIBE_NUMBER %}
+{% endif %}
+
 
 package:
   name: {{ name|lower }}
@@ -9,6 +14,7 @@ source:
   git_url: ../
 
 build:
+  noarch: python
   number: 0
   script: python setup.py install --single-version-externally-managed --record record.txt
 
