@@ -24,15 +24,6 @@ release_py_path = _path_under_setup(pkg_name, '_release.py')
 _version_env_var = '%s_RELEASE_VERSION' % pkg_name.upper()
 RELEASE_VERSION = os.environ.get(_version_env_var, '')
 
-# http://conda.pydata.org/docs/build.html#environment-variables-set-during-the-build-process
-CONDA_BUILD = os.environ.get('CONDA_BUILD', '0') == '1'
-if CONDA_BUILD:
-    try:
-        RELEASE_VERSION = 'v' + open(
-            '__conda_version__.txt', 'rt').readline().rstrip()
-    except IOError:
-        pass
-
 if len(RELEASE_VERSION) > 1 and RELEASE_VERSION[0] == 'v':
     TAGGED_RELEASE = True
     __version__ = RELEASE_VERSION[1:]
@@ -49,7 +40,8 @@ else:
         else:
             if 'develop' not in sys.argv:
                 warnings.warn("Using git to derive version: dev-branches may compete.")
-                __version__ = re.sub('v([0-9.]+)-(\d+)-(\w+)', r'\1.post\2+\3', _git_version)  # .dev < '' < .post
+                _ver_tmplt = r'\1.post\2' if os.environ.get('CONDA_BUILD', '0') == '1' else r'\1.post\2+\3'
+                __version__ = re.sub('v([0-9.]+)-(\d+)-(\S+)', _ver_tmplt, _git_version)  # .dev < '' < .post
 
 
 tests = [

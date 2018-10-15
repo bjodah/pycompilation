@@ -1,9 +1,11 @@
 build:
   image: bjodah/bjodahimg18dev:v1.3
   commands:
-    - bash -c '[[ $(python setup.py --version) =~ ^[0-9]+.* ]]'
+    - curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    - python2 get-pip.py
     - python2 -m pip install --upgrade wheel setuptools
     - python3 -m pip install --upgrade wheel setuptools
+    - bash -c '[[ $(python setup.py --version) =~ ^[0-9]+.* ]]'
     - ./scripts/ci.sh pycompilation
     - PATH=$HOME/.local/bin:$PATH ./scripts/generate_docs.sh
     - ./scripts/prepare_deploy.sh
