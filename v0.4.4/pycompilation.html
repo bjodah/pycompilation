@@ -1,0 +1,1737 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pycompilation package &mdash; pycompilation 0.4.4 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="pycompilation 0.4.4 documentation" href="index.html"/>
+        <link rel="prev" title="Welcome to pycompilation’s documentation!" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> pycompilation
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.4.4
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">pycompilation package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pycompilation.compilation">pycompilation.compilation module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#motivation">Motivation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pycompilation.dist">pycompilation.dist module</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pycompilation.runners">pycompilation.runners module</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pycompilation.util">pycompilation.util module</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pycompilation</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>pycompilation package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/pycompilation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-pycompilation">
+<span id="pycompilation-package"></span><h1>pycompilation package<a class="headerlink" href="#module-pycompilation" title="Permalink to this headline">¶</a></h1>
+<p>pycompilation is a package for meta programming. It aims to support
+multiple compilers: GNU, Intel, PGI.</p>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-pycompilation.compilation">
+<span id="pycompilation-compilation-module"></span><h2>pycompilation.compilation module<a class="headerlink" href="#module-pycompilation.compilation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="motivation">
+<h3>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h3>
+<p>Distutils does not allow to use object files in compilation
+(see <a class="reference external" href="http://bugs.python.org/issue5372">http://bugs.python.org/issue5372</a>)
+hence the compilation of source files cannot be cached
+unless doing something like what compile_sources / src2obj do.</p>
+<p>Distutils does not support fortran out of the box (motivation of
+numpy distutils), furthermore:
+linking mixed C++/Fortran use either Fortran (Intel) or
+C++ (GNU) compiler.</p>
+<dl class="function">
+<dt id="pycompilation.compilation.any_cplus">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">any_cplus</code><span class="sig-paren">(</span><em>srcs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#any_cplus"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.any_cplus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.any_fort">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">any_fort</code><span class="sig-paren">(</span><em>srcs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#any_fort"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.any_fort" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.compile_link_import_py_ext">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">compile_link_import_py_ext</code><span class="sig-paren">(</span><em>srcs</em>, <em>extname=None</em>, <em>build_dir=None</em>, <em>compile_kwargs=None</em>, <em>link_kwargs=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#compile_link_import_py_ext"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.compile_link_import_py_ext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compiles sources in <cite>srcs</cite> to a shared object (python extension)
+which is imported. If shared object is newer than the sources, they
+are not recompiled but instead it is imported.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>srcs: string</strong></p>
+<blockquote>
+<div><p>list of paths to sources</p>
+</div></blockquote>
+<p><strong>extname: string</strong></p>
+<blockquote>
+<div><p>name of extension (default: None)
+(taken from the last file in <cite>srcs</cite> - without extension)</p>
+</div></blockquote>
+<p><strong>build_dir: string</strong></p>
+<blockquote>
+<div><p>path to directory in which objects files etc. are generated</p>
+</div></blockquote>
+<p><strong>compile_kwargs: dict</strong></p>
+<blockquote>
+<div><p>keyword arguments passed to compile_sources</p>
+</div></blockquote>
+<p><strong>link_kwargs: dict</strong></p>
+<blockquote>
+<div><p>keyword arguments passed to link_py_so</p>
+</div></blockquote>
+<p><strong>**kwargs:</strong></p>
+<blockquote>
+<div><p>additional keyword arguments overwrites to both compile_kwargs
+and link_kwargs useful for convenience e.g. when passing logger</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the imported module</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mod</span> <span class="o">=</span> <span class="n">compile_link_import_py_ext</span><span class="p">([</span><span class="s1">&#39;fft.f90&#39;</span><span class="p">,</span> <span class="s1">&#39;convolution.cpp&#39;</span><span class="p">,</span>        <span class="s1">&#39;fft_wrapper.pyx&#39;</span><span class="p">],</span> <span class="n">only_update</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Aprim</span> <span class="o">=</span> <span class="n">mod</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>  
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.compile_link_import_strings">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">compile_link_import_strings</code><span class="sig-paren">(</span><em>codes</em>, <em>build_dir=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#compile_link_import_strings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.compile_link_import_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a temporary directory and dumps, compiles and links
+provided source code.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>codes: iterable of name/source pair tuples</strong></p>
+<p><strong>build_dir: string (default: None)</strong></p>
+<blockquote>
+<div><p>path to cache_dir. None implies use a temporary directory.</p>
+</div></blockquote>
+<p><strong>**kwargs:</strong></p>
+<blockquote class="last">
+<div><p>keyword arguments passed onto <cite>compile_link_import_py_ext</cite></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.compile_sources">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">compile_sources</code><span class="sig-paren">(</span><em>files</em>, <em>CompilerRunner_=None</em>, <em>destdir=None</em>, <em>cwd=None</em>, <em>keep_dir_struct=False</em>, <em>per_file_kwargs=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#compile_sources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.compile_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compile source code files to object files.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>files: iterable of path strings</strong></p>
+<blockquote>
+<div><p>source files, if cwd is given, the paths are taken as relative.</p>
+</div></blockquote>
+<p><strong>CompilerRunner_: CompilerRunner instance (optional)</strong></p>
+<blockquote>
+<div><p>could be e.g. pycompilation.FortranCompilerRunner
+Will be inferred from filename extensions if missing.</p>
+</div></blockquote>
+<p><strong>destdir: path string</strong></p>
+<blockquote>
+<div><p>output directory, if cwd is given, the path is taken as relative</p>
+</div></blockquote>
+<p><strong>cwd: path string</strong></p>
+<blockquote>
+<div><p>working directory. Specify to have compiler run in other directory.
+also used as root of relative paths.</p>
+</div></blockquote>
+<p><strong>keep_dir_struct: bool</strong></p>
+<blockquote>
+<div><p>Reproduce directory structure in <cite>destdir</cite>. default: False</p>
+</div></blockquote>
+<p><strong>per_file_kwargs: dict</strong></p>
+<blockquote>
+<div><p>dict mapping instances in <cite>files</cite> to keyword arguments</p>
+</div></blockquote>
+<p><strong>**kwargs: dict</strong></p>
+<blockquote class="last">
+<div><p>default keyword arguments to pass to <a href="#id1"><span class="problematic" id="id2">CompilerRunner_</span></a></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.get_mixed_fort_c_linker">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">get_mixed_fort_c_linker</code><span class="sig-paren">(</span><em>vendor=None</em>, <em>metadir=None</em>, <em>cplus=False</em>, <em>cwd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#get_mixed_fort_c_linker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.get_mixed_fort_c_linker" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.link">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">link</code><span class="sig-paren">(</span><em>obj_files</em>, <em>out_file=None</em>, <em>shared=False</em>, <em>CompilerRunner_=None</em>, <em>cwd=None</em>, <em>cplus=False</em>, <em>fort=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#link"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.link" title="Permalink to this definition">¶</a></dt>
+<dd><p>Link object files.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>obj_files: iterable of path strings</strong></p>
+<p><strong>out_file: path string (optional)</strong></p>
+<blockquote>
+<div><p>path to executable/shared library, if missing
+it will be deduced from the last item in obj_files.</p>
+</div></blockquote>
+<p><strong>shared: bool</strong></p>
+<blockquote>
+<div><p>Generate a shared library? default: False</p>
+</div></blockquote>
+<p><strong>CompilerRunner_: pycompilation.CompilerRunner subclass (optional)</strong></p>
+<blockquote>
+<div><p>If not given the <cite>cplus</cite> and <cite>fort</cite> flags will be inspected
+(fallback is the C compiler)</p>
+</div></blockquote>
+<p><strong>cwd: path string</strong></p>
+<blockquote>
+<div><p>root of relative paths and working directory for compiler</p>
+</div></blockquote>
+<p><strong>cplus: bool</strong></p>
+<blockquote>
+<div><p>C++ objects? default: False</p>
+</div></blockquote>
+<p><strong>fort: bool</strong></p>
+<blockquote>
+<div><p>Fortran objects? default: False</p>
+</div></blockquote>
+<p><strong>**kwargs: dict</strong></p>
+<blockquote>
+<div><p>keyword arguments passed onto <a href="#id3"><span class="problematic" id="id4">CompilerRunner_</span></a></p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The absolute to the generated shared object / executable</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.link_py_so">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">link_py_so</code><span class="sig-paren">(</span><em>obj_files</em>, <em>so_file=None</em>, <em>cwd=None</em>, <em>libraries=None</em>, <em>cplus=False</em>, <em>fort=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#link_py_so"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.link_py_so" title="Permalink to this definition">¶</a></dt>
+<dd><p>Link python extension module (shared object) for importing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>obj_files: iterable of path strings</strong></p>
+<blockquote>
+<div><p>object files to be linked</p>
+</div></blockquote>
+<p><strong>so_file: path string</strong></p>
+<blockquote>
+<div><p>Name (path) of shared object file to create. If
+not specified it will have the basname of the last object
+file in <cite>obj_files</cite> but with the extension ‘.so’ (Unix) or
+‘.dll’ (Windows).</p>
+</div></blockquote>
+<p><strong>cwd: path string</strong></p>
+<blockquote>
+<div><p>root of relative paths and working directory of linker.</p>
+</div></blockquote>
+<p><strong>libraries: iterable of strings</strong></p>
+<blockquote>
+<div><p>libraries to link against, e.g. [‘m’]</p>
+</div></blockquote>
+<p><strong>cplus: bool</strong></p>
+<blockquote>
+<div><p>Any C++ objects? default: False</p>
+</div></blockquote>
+<p><strong>fort: bool</strong></p>
+<blockquote>
+<div><p>Any Fortran objects? default: False</p>
+</div></blockquote>
+<p><strong>kwargs</strong>: dict**</p>
+<blockquote>
+<div><p>keyword arguments passed onto <cite>link(…)</cite></p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Absolute path to the generate shared object</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.pyx2obj">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">pyx2obj</code><span class="sig-paren">(</span><em>pyxpath</em>, <em>objpath=None</em>, <em>interm_c_dir=None</em>, <em>cwd=None</em>, <em>logger=None</em>, <em>full_module_name=None</em>, <em>only_update=False</em>, <em>metadir=None</em>, <em>include_numpy=False</em>, <em>include_dirs=None</em>, <em>cy_kwargs=None</em>, <em>gdb=False</em>, <em>cplus=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#pyx2obj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.pyx2obj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function</p>
+<p>If cwd is specified, pyxpath and dst are taken to be relative
+If only_update is set to <cite>True</cite> the modification time is checked
+and compilation is only run if the source is newer than the
+destination</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>pyxpath: path string</strong></p>
+<blockquote>
+<div><p>path to Cython source file</p>
+</div></blockquote>
+<p><strong>objpath: path string (optional)</strong></p>
+<blockquote>
+<div><p>path to object file to generate</p>
+</div></blockquote>
+<p><strong>interm_c_dir: path string (optional)</strong></p>
+<blockquote>
+<div><p>directory to put generated C file.</p>
+</div></blockquote>
+<p><strong>cwd: path string (optional)</strong></p>
+<blockquote>
+<div><p>working directory and root of relative paths</p>
+</div></blockquote>
+<p><strong>logger: logging.Logger (optional)</strong></p>
+<blockquote>
+<div><p>passed onto <cite>simple_cythonize</cite> and <cite>src2obj</cite></p>
+</div></blockquote>
+<p><strong>full_module_name: string (optional)</strong></p>
+<blockquote>
+<div><p>passed onto <cite>simple_cythonize</cite></p>
+</div></blockquote>
+<p><strong>only_update: bool (optional)</strong></p>
+<blockquote>
+<div><p>passed onto <cite>simple_cythonize</cite> and <cite>src2obj</cite></p>
+</div></blockquote>
+<p><strong>metadir: path string (optional)</strong></p>
+<blockquote>
+<div><p>passed onto src2obj</p>
+</div></blockquote>
+<p><strong>include_numpy: bool (optional)</strong></p>
+<blockquote>
+<div><p>Add numpy include directory to include_dirs. default: False</p>
+</div></blockquote>
+<p><strong>include_dirs: iterable of path strings (optional)</strong></p>
+<blockquote>
+<div><p>Passed onto src2obj and via cy_kwargs[‘include_path’]
+to simple_cythonize.</p>
+</div></blockquote>
+<p><strong>cy_kwargs: dict (optional)</strong></p>
+<blockquote>
+<div><p>keyword arguments passed onto <cite>simple_cythonize</cite></p>
+</div></blockquote>
+<p><strong>gdb: bool (optional)</strong></p>
+<blockquote>
+<div><p>convenience: cy_kwargs[‘gdb_debug’] is set True if gdb=True,
+default: False</p>
+</div></blockquote>
+<p><strong>cplus: bool (optional)</strong></p>
+<blockquote>
+<div><p>Indicate whether C++ is used. default: auto-detect using <cite>pyx_is_cplus</cite></p>
+</div></blockquote>
+<p><strong>**kwargs: dict</strong></p>
+<blockquote>
+<div><p>keyword arguments passed onto src2obj</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Absolute path of generated object file.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.simple_cythonize">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">simple_cythonize</code><span class="sig-paren">(</span><em>src</em>, <em>destdir=None</em>, <em>cwd=None</em>, <em>logger=None</em>, <em>full_module_name=None</em>, <em>only_update=False</em>, <em>**cy_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#simple_cythonize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.simple_cythonize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a C file from a Cython source file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>src: path string</strong></p>
+<blockquote>
+<div><p>path to Cython source</p>
+</div></blockquote>
+<p><strong>destdir: path string (optional)</strong></p>
+<blockquote>
+<div><p>Path to output directory (default: ‘.’)</p>
+</div></blockquote>
+<p><strong>cwd: path string (optional)</strong></p>
+<blockquote>
+<div><p>Root of relative paths (default: ‘.’)</p>
+</div></blockquote>
+<p><strong>logger: logging.Logger</strong></p>
+<blockquote>
+<div><p>info level used.</p>
+</div></blockquote>
+<p><strong>full_module_name: string</strong></p>
+<blockquote>
+<div><p>passed to cy_compile (default: None)</p>
+</div></blockquote>
+<p><strong>only_update: bool</strong></p>
+<blockquote>
+<div><p>Only cythonize if source is newer. default: False</p>
+</div></blockquote>
+<p><strong>**cy_kwargs:</strong></p>
+<blockquote class="last">
+<div><p>second argument passed to cy_compile.
+Generates a .cpp file if cplus=True in cy_kwargs, else a .c file.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.compilation.src2obj">
+<code class="descclassname">pycompilation.compilation.</code><code class="descname">src2obj</code><span class="sig-paren">(</span><em>srcpath</em>, <em>CompilerRunner_=None</em>, <em>objpath=None</em>, <em>only_update=False</em>, <em>cwd=None</em>, <em>out_ext=None</em>, <em>inc_py=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/compilation.html#src2obj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.compilation.src2obj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compiles a source code file to an object file.
+Files ending with ‘.pyx’ assumed to be cython files and
+are dispatched to pyx2obj.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>srcpath: path string</strong></p>
+<blockquote>
+<div><p>path to source file</p>
+</div></blockquote>
+<p><strong>CompilerRunner_: pycompilation.CompilerRunner subclass (optional)</strong></p>
+<blockquote>
+<div><p>Default: deduced from extension of srcpath</p>
+</div></blockquote>
+<p><strong>objpath: path string (optional)</strong></p>
+<blockquote>
+<div><p>path to generated object. defualt: deduced from srcpath</p>
+</div></blockquote>
+<p><strong>only_update: bool</strong></p>
+<blockquote>
+<div><p>only compile if source is newer than objpath. default: False</p>
+</div></blockquote>
+<p><strong>cwd: path string (optional)</strong></p>
+<blockquote>
+<div><p>working directory and root of relative paths. default: current dir.</p>
+</div></blockquote>
+<p><strong>out_ext: string</strong></p>
+<blockquote>
+<div><p>set when objpath is a dir and you want to override defaults
+(‘.o’/’.obj’ for Unix/Windows).</p>
+</div></blockquote>
+<p><strong>inc_py: bool</strong></p>
+<blockquote>
+<div><p>add Python include path to include_dirs. default: False</p>
+</div></blockquote>
+<p><strong>**kwargs: dict</strong></p>
+<blockquote class="last">
+<div><p>keyword arguments passed onto <a href="#id5"><span class="problematic" id="id6">CompilerRunner_</span></a> or pyx2obj</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-pycompilation.dist">
+<span id="pycompilation-dist-module"></span><h2>pycompilation.dist module<a class="headerlink" href="#module-pycompilation.dist" title="Permalink to this headline">¶</a></h2>
+<p>Interaction with distutils</p>
+<dl class="function">
+<dt id="pycompilation.dist.PCExtension">
+<code class="descclassname">pycompilation.dist.</code><code class="descname">PCExtension</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/dist.html#PCExtension"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.dist.PCExtension" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>template_regexps: list of 3-tuples</strong></p>
+<blockquote>
+<div><p>e.g. [(pattern1, target1, subsd1), …], used to generate
+templated code</p>
+</div></blockquote>
+<p><strong>pass_extra_compile_args: bool</strong></p>
+<blockquote class="last">
+<div><p>should ext.extra_compile_args be passed along? default: False</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.dist.pc_build_ext">
+<em class="property">class </em><code class="descclassname">pycompilation.dist.</code><code class="descname">pc_build_ext</code><span class="sig-paren">(</span><em>dist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/dist.html#pc_build_ext"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.dist.pc_build_ext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">distutils.command.build_ext.build_ext</span></code></p>
+<p>build_ext class for PCExtension
+Support for template_regexps</p>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">announce</span></code>(msg[,&nbsp;level])</td>
+<td>If the current verbosity level is of greater than or equal to ‘level’ print ‘msg’ to stdout.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_extension</span></code>(ext)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_extensions</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_extensions_list</span></code>(extensions)</td>
+<td>Ensure that the list of extensions (presumably provided as a command option ‘extensions’) is valid, i.e.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_file</span></code>(infile,&nbsp;outfile[,&nbsp;preserve_mode,&nbsp;…])</td>
+<td>Copy a file respecting verbose, dry-run and force flags.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_tree</span></code>(infile,&nbsp;outfile[,&nbsp;preserve_mode,&nbsp;…])</td>
+<td>Copy an entire directory tree respecting verbose, dry-run, and force flags.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">debug_print</span></code>(msg)</td>
+<td>Print ‘msg’ to stdout if the global DEBUG (taken from the DISTUTILS_DEBUG environment variable) flag is true.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">dump_options</span></code>([header,&nbsp;indent])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_dirname</span></code>(option)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_filename</span></code>(option)</td>
+<td>Ensure that ‘option’ is the name of an existing file.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_finalized</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_string</span></code>(option[,&nbsp;default])</td>
+<td>Ensure that ‘option’ is a string; if not defined, set it to ‘default’.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_string_list</span></code>(option)</td>
+<td>Ensure that ‘option’ is a list of strings.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code>(func,&nbsp;args[,&nbsp;msg,&nbsp;level])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">finalize_options</span></code>()</td>
+<td>Set final values for all the options that this command supports.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_swig</span></code>()</td>
+<td>Return the name of the SWIG executable.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_command_name</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_export_symbols</span></code>(ext)</td>
+<td>Return the list of symbols that a shared extension has to export.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ext_filename</span></code>(ext_name)</td>
+<td>Convert the name of an extension (eg.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ext_fullname</span></code>(ext_name)</td>
+<td>Returns the fullname of a given extension name.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ext_fullpath</span></code>(ext_name)</td>
+<td>Returns the path of the filename for a given extension.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_finalized_command</span></code>(command[,&nbsp;create])</td>
+<td>Wrapper around Distribution’s ‘get_command_obj()’ method: find (create if necessary and ‘create’ is true) the command object for ‘command’, call its ‘ensure_finalized()’ method, and return the finalized command object.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_libraries</span></code>(ext)</td>
+<td>Return the list of libraries to link against when building a shared extension.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_outputs</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_source_files</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sub_commands</span></code>()</td>
+<td>Determine the sub-commands that are relevant in the current distribution (ie., that need to be run).</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_options</span></code>()</td>
+<td>Set default values for all the options that this command supports.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_archive</span></code>(base_name,&nbsp;format[,&nbsp;root_dir,&nbsp;…])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_file</span></code>(infiles,&nbsp;outfile,&nbsp;func,&nbsp;args[,&nbsp;…])</td>
+<td>Special case of ‘execute()’ for operations that process one or more input files and generate one output file.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">mkpath</span></code>(name[,&nbsp;mode])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">move_file</span></code>(src,&nbsp;dst[,&nbsp;level])</td>
+<td>Move a file respecting dry-run flag.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">reinitialize_command</span></code>(command[,&nbsp;…])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#pycompilation.dist.pc_build_ext.render_callback" title="pycompilation.dist.pc_build_ext.render_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_callback</span></code></a>(src,&nbsp;dest,&nbsp;subsd[,&nbsp;…])</td>
+<td>Overload this function if you want to use a template engine such as e.g.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#pycompilation.dist.pc_build_ext.run" title="pycompilation.dist.pc_build_ext.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a>()</td>
+<td>A command’s raison d’etre: carry out the action it exists to perform, controlled by the options initialized in ‘initialize_options()’, customized by other commands, the setup script, the command-line, and config files, and finalized in ‘finalize_options()’.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_command</span></code>(command)</td>
+<td>Run some other command: uses the ‘run_command()’ method of Distribution, which creates and finalizes the command object if necessary and then invokes its ‘run()’ method.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_undefined_options</span></code>(src_cmd,&nbsp;*option_pairs)</td>
+<td>Set the values of any “undefined” options from corresponding option values in some other command object.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">spawn</span></code>(cmd[,&nbsp;search_path,&nbsp;level])</td>
+<td>Spawn an external command respecting dry-run flag.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">swig_sources</span></code>(sources,&nbsp;extension)</td>
+<td>Walk the list of source files in ‘sources’, looking for SWIG interface (.i) files.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">warn</span></code>(msg)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="staticmethod">
+<dt id="pycompilation.dist.pc_build_ext.render_callback">
+<em class="property">static </em><code class="descname">render_callback</code><span class="sig-paren">(</span><em>src</em>, <em>dest</em>, <em>subsd</em>, <em>only_update=False</em>, <em>prev_subsd=None</em>, <em>create_dest_dirs=True</em>, <em>logger=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycompilation.dist.pc_build_ext.render_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overload this function if you want to use a template engine such as
+e.g. mako.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycompilation.dist.pc_build_ext.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/dist.html#pc_build_ext.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.dist.pc_build_ext.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>A command’s raison d’etre: carry out the action it exists to
+perform, controlled by the options initialized in
+‘initialize_options()’, customized by other commands, the setup
+script, the command-line, and config files, and finalized in
+‘finalize_options()’.  All terminal output and filesystem
+interaction should be done by ‘run()’.</p>
+<p>This method must be implemented by all command classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.dist.pc_sdist">
+<em class="property">class </em><code class="descclassname">pycompilation.dist.</code><code class="descname">pc_sdist</code><span class="sig-paren">(</span><em>dist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/dist.html#pc_sdist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.dist.pc_sdist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">distutils.command.sdist.sdist</span></code></p>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_defaults</span></code>()</td>
+<td>Add all the default files to self.filelist:</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">announce</span></code>(msg[,&nbsp;level])</td>
+<td>If the current verbosity level is of greater than or equal to ‘level’ print ‘msg’ to stdout.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_metadata</span></code>()</td>
+<td>Deprecated API.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">checking_metadata</span></code>()</td>
+<td>Callable used for the check sub-command.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_file</span></code>(infile,&nbsp;outfile[,&nbsp;preserve_mode,&nbsp;…])</td>
+<td>Copy a file respecting verbose, dry-run and force flags.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_tree</span></code>(infile,&nbsp;outfile[,&nbsp;preserve_mode,&nbsp;…])</td>
+<td>Copy an entire directory tree respecting verbose, dry-run, and force flags.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">debug_print</span></code>(msg)</td>
+<td>Print ‘msg’ to stdout if the global DEBUG (taken from the DISTUTILS_DEBUG environment variable) flag is true.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">dump_options</span></code>([header,&nbsp;indent])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_dirname</span></code>(option)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_filename</span></code>(option)</td>
+<td>Ensure that ‘option’ is the name of an existing file.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_finalized</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_string</span></code>(option[,&nbsp;default])</td>
+<td>Ensure that ‘option’ is a string; if not defined, set it to ‘default’.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_string_list</span></code>(option)</td>
+<td>Ensure that ‘option’ is a list of strings.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code>(func,&nbsp;args[,&nbsp;msg,&nbsp;level])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">finalize_options</span></code>()</td>
+<td>Set final values for all the options that this command supports.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_archive_files</span></code>()</td>
+<td>Return the list of archive files created when the command was run, or None if the command hasn’t run yet.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_command_name</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_file_list</span></code>()</td>
+<td>Figure out the list of files to include in the source distribution, and put it in ‘self.filelist’.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_finalized_command</span></code>(command[,&nbsp;create])</td>
+<td>Wrapper around Distribution’s ‘get_command_obj()’ method: find (create if necessary and ‘create’ is true) the command object for ‘command’, call its ‘ensure_finalized()’ method, and return the finalized command object.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sub_commands</span></code>()</td>
+<td>Determine the sub-commands that are relevant in the current distribution (ie., that need to be run).</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_options</span></code>()</td>
+<td>Set default values for all the options that this command supports.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_archive</span></code>(base_name,&nbsp;format[,&nbsp;root_dir,&nbsp;…])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_distribution</span></code>()</td>
+<td>Create the source distribution(s).</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_file</span></code>(infiles,&nbsp;outfile,&nbsp;func,&nbsp;args[,&nbsp;…])</td>
+<td>Special case of ‘execute()’ for operations that process one or more input files and generate one output file.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_release_tree</span></code>(base_dir,&nbsp;files)</td>
+<td>Create the directory tree that will become the source distribution archive.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">mkpath</span></code>(name[,&nbsp;mode])</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">move_file</span></code>(src,&nbsp;dst[,&nbsp;level])</td>
+<td>Move a file respecting dry-run flag.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">prune_file_list</span></code>()</td>
+<td>Prune off branches that might slip into the file list as created by ‘read_template()’, but really don’t belong there:   * the build tree (typically “build”)   * the release tree itself (only an issue if we ran “sdist”     previously with –keep-temp, or it aborted)   * any RCS, CVS, .svn, .hg, .git, .bzr, _darcs directories</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_manifest</span></code>()</td>
+<td>Read the manifest file (named by ‘self.manifest’) and use it to fill in ‘self.filelist’, the list of files to include in the source distribution.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_template</span></code>()</td>
+<td>Read and parse manifest template file named by self.template.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">reinitialize_command</span></code>(command[,&nbsp;…])</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#pycompilation.dist.pc_sdist.render_callback" title="pycompilation.dist.pc_sdist.render_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_callback</span></code></a>(src,&nbsp;dest,&nbsp;subsd[,&nbsp;…])</td>
+<td>Overload this function if you want to use a template engine such as e.g.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#pycompilation.dist.pc_sdist.run" title="pycompilation.dist.pc_sdist.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a>()</td>
+<td>A command’s raison d’etre: carry out the action it exists to perform, controlled by the options initialized in ‘initialize_options()’, customized by other commands, the setup script, the command-line, and config files, and finalized in ‘finalize_options()’.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_command</span></code>(command)</td>
+<td>Run some other command: uses the ‘run_command()’ method of Distribution, which creates and finalizes the command object if necessary and then invokes its ‘run()’ method.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_undefined_options</span></code>(src_cmd,&nbsp;*option_pairs)</td>
+<td>Set the values of any “undefined” options from corresponding option values in some other command object.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">spawn</span></code>(cmd[,&nbsp;search_path,&nbsp;level])</td>
+<td>Spawn an external command respecting dry-run flag.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">warn</span></code>(msg)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_manifest</span></code>()</td>
+<td>Write the file list in ‘self.filelist’ (presumably as filled in by ‘add_defaults()’ and ‘read_template()’) to the manifest file named by ‘self.manifest’.</td>
+</tr>
+</tbody>
+</table>
+<dl class="staticmethod">
+<dt id="pycompilation.dist.pc_sdist.render_callback">
+<em class="property">static </em><code class="descname">render_callback</code><span class="sig-paren">(</span><em>src</em>, <em>dest</em>, <em>subsd</em>, <em>only_update=False</em>, <em>prev_subsd=None</em>, <em>create_dest_dirs=True</em>, <em>logger=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycompilation.dist.pc_sdist.render_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overload this function if you want to use a template engine such as
+e.g. mako.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycompilation.dist.pc_sdist.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/dist.html#pc_sdist.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.dist.pc_sdist.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>A command’s raison d’etre: carry out the action it exists to
+perform, controlled by the options initialized in
+‘initialize_options()’, customized by other commands, the setup
+script, the command-line, and config files, and finalized in
+‘finalize_options()’.  All terminal output and filesystem
+interaction should be done by ‘run()’.</p>
+<p>This method must be implemented by all command classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.dist.render_python_template_to">
+<code class="descclassname">pycompilation.dist.</code><code class="descname">render_python_template_to</code><span class="sig-paren">(</span><em>src</em>, <em>dest</em>, <em>subsd</em>, <em>only_update=False</em>, <em>prev_subsd=None</em>, <em>create_dest_dirs=True</em>, <em>logger=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/dist.html#render_python_template_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.dist.render_python_template_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overload this function if you want to use a template engine such as
+e.g. mako.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycompilation.runners">
+<span id="pycompilation-runners-module"></span><h2>pycompilation.runners module<a class="headerlink" href="#module-pycompilation.runners" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pycompilation.runners.CCompilerRunner">
+<em class="property">class </em><code class="descclassname">pycompilation.runners.</code><code class="descname">CCompilerRunner</code><span class="sig-paren">(</span><em>sources</em>, <em>out</em>, <em>flags=None</em>, <em>run_linker=True</em>, <em>compiler=None</em>, <em>cwd=None</em>, <em>include_dirs=None</em>, <em>libraries=None</em>, <em>library_dirs=None</em>, <em>std=None</em>, <em>options=None</em>, <em>define=None</em>, <em>undef=None</em>, <em>strict_aliasing=None</em>, <em>logger=None</em>, <em>preferred_vendor=None</em>, <em>metadir=None</em>, <em>lib_options=None</em>, <em>only_update=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#CCompilerRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.CCompilerRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pycompilation.runners.CompilerRunner" title="pycompilation.runners.CompilerRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">pycompilation.runners.CompilerRunner</span></code></a>, <a class="reference internal" href="#pycompilation.util.HasMetaData" title="pycompilation.util.HasMetaData"><code class="xref py py-class docutils literal notranslate"><span class="pre">pycompilation.util.HasMetaData</span></code></a></p>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>logger</strong></td>
+<td>&#160;</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">cmd</span></code>()</td>
+<td>The command below covers most cases, if you need someting more complex subclass this.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_compiler</span></code>(preferred_vendor,&nbsp;metadir,&nbsp;cwd)</td>
+<td>Identify a suitable C/fortran/other compiler</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_from_metadata_file</span></code>(dirpath,&nbsp;key)</td>
+<td>Get value of key in metadata file dict.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_metadata_file</span></code>(dirpath,&nbsp;key,&nbsp;value)</td>
+<td>Store <cite>key: value</cite> in metadata file dict.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="pycompilation.runners.CCompilerRunner.compiler_dict">
+<code class="descname">compiler_dict</code><em class="property"> = {'gnu': 'gcc', 'intel': 'icc', 'llvm': 'clang'}</em><a class="headerlink" href="#pycompilation.runners.CCompilerRunner.compiler_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CCompilerRunner.compiler_name_vendor_mapping">
+<code class="descname">compiler_name_vendor_mapping</code><em class="property"> = {'clang': 'llvm', 'gcc': 'gnu', 'icc': 'intel'}</em><a class="headerlink" href="#pycompilation.runners.CCompilerRunner.compiler_name_vendor_mapping" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CCompilerRunner.option_flag_dict">
+<code class="descname">option_flag_dict</code><em class="property"> = {'clang': {'openmp': ('-fopenmp',), 'pic': ('-fPIC',), 'debug': ('-g',), 'warn': ('-Wall', '-Wextra'), 'fast': ('-O2', '-ffast-math', '-funroll-loops')}, 'gcc': {'openmp': ('-fopenmp',), 'pic': ('-fPIC',), 'debug': ('-g',), 'warn': ('-Wall', '-Wextra'), 'fast': ('-O2', '-ffast-math', '-funroll-loops')}, 'icc': {'openmp': ('-openmp',), 'pic': ('-fPIC',), 'debug': ('-g',), 'fast': ('-fast',), 'warn': ('-Wall',)}}</em><a class="headerlink" href="#pycompilation.runners.CCompilerRunner.option_flag_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CCompilerRunner.standards">
+<code class="descname">standards</code><em class="property"> = ('c89', 'c90', 'c99', 'c11')</em><a class="headerlink" href="#pycompilation.runners.CCompilerRunner.standards" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CCompilerRunner.std_formater">
+<code class="descname">std_formater</code><em class="property"> = {'clang': &lt;built-in method format of str object at 0x7f9eaa5a96f8&gt;, 'gcc': &lt;built-in method format of str object at 0x7f9eaa5a96f8&gt;, 'icc': &lt;built-in method format of str object at 0x7f9eaa5a96f8&gt;}</em><a class="headerlink" href="#pycompilation.runners.CCompilerRunner.std_formater" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.runners.CompilerRunner">
+<em class="property">class </em><code class="descclassname">pycompilation.runners.</code><code class="descname">CompilerRunner</code><span class="sig-paren">(</span><em>sources</em>, <em>out</em>, <em>flags=None</em>, <em>run_linker=True</em>, <em>compiler=None</em>, <em>cwd=None</em>, <em>include_dirs=None</em>, <em>libraries=None</em>, <em>library_dirs=None</em>, <em>std=None</em>, <em>options=None</em>, <em>define=None</em>, <em>undef=None</em>, <em>strict_aliasing=None</em>, <em>logger=None</em>, <em>preferred_vendor=None</em>, <em>metadir=None</em>, <em>lib_options=None</em>, <em>only_update=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#CompilerRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.CompilerRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>CompilerRunner class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>sources: iterable of path strings</strong></p>
+<p><strong>out: path string</strong></p>
+<p><strong>flags: iterable of strings</strong></p>
+<p><strong>run_linker: bool</strong></p>
+<p><strong>compiler: string</strong></p>
+<blockquote>
+<div><p>compiler command to call</p>
+</div></blockquote>
+<p><strong>cwd: path string</strong></p>
+<blockquote>
+<div><p>root of relative paths</p>
+</div></blockquote>
+<p><strong>include_dirs: iterable of path strings</strong></p>
+<blockquote>
+<div><p>include directories</p>
+</div></blockquote>
+<p><strong>libraries: iterable of strings</strong></p>
+<blockquote>
+<div><p>libraries to link against.</p>
+</div></blockquote>
+<p><strong>library_dirs: iterable of path strings</strong></p>
+<blockquote>
+<div><p>paths to search for shared libraries</p>
+</div></blockquote>
+<p><strong>std: string</strong></p>
+<blockquote>
+<div><p>Standard string, e.g. c++11, c99, f2008</p>
+</div></blockquote>
+<p><strong>options: iterable of strings</strong></p>
+<blockquote>
+<div><p>pycompilation convenience tags (fast, warn, pic, openmp).
+Sets extra compiler flags.</p>
+</div></blockquote>
+<p><strong>define: iterable of strings</strong></p>
+<blockquote>
+<div><p>macros to define</p>
+</div></blockquote>
+<p><strong>undef: iterable of strings</strong></p>
+<blockquote>
+<div><p>macros to undefine</p>
+</div></blockquote>
+<p><strong>logger: logging.Logger</strong></p>
+<blockquote>
+<div><p>info and error level used.</p>
+</div></blockquote>
+<p><strong>preferred_vendor: string</strong></p>
+<blockquote>
+<div><p>name of preferred vendor e.g. ‘gnu’ or ‘intel’</p>
+</div></blockquote>
+<p><strong>metadir: path string</strong></p>
+<blockquote>
+<div><p>location where to cache metadata about compilation (choice of compiler)</p>
+</div></blockquote>
+<p><strong>lib_options: iterable of strings</strong></p>
+<blockquote>
+<div><p>pycompilation convenience tags e.g. ‘openmp’ and/or ‘fortran’.
+Sets extra libraries.</p>
+</div></blockquote>
+<p><strong>only_update: bool</strong></p>
+<blockquote>
+<div><p>Only run compiler if sources are newer than destination. default: False</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">CompilerRunner instance</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="76%" />
+<col width="24%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>compiler_dict</strong></td>
+<td>&#160;</td>
+</tr>
+<tr class="row-even"><td><strong>compiler_name_vendor_mapping</strong></td>
+<td>&#160;</td>
+</tr>
+<tr class="row-odd"><td><strong>logger</strong></td>
+<td>&#160;</td>
+</tr>
+<tr class="row-even"><td><strong>option_flag_dict</strong></td>
+<td>&#160;</td>
+</tr>
+<tr class="row-odd"><td><strong>standards</strong></td>
+<td>&#160;</td>
+</tr>
+<tr class="row-even"><td><strong>std_formater</strong></td>
+<td>&#160;</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="13%" />
+<col width="87%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>run():</strong></td>
+<td>Invoke compilation as a subprocess. Log output if logger present.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pycompilation.runners.CompilerRunner.cmd">
+<code class="descname">cmd</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#CompilerRunner.cmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.CompilerRunner.cmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>The command below covers most cases, if you need
+someting more complex subclass this.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.compiler_dict">
+<code class="descname">compiler_dict</code><em class="property"> = None</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.compiler_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.compiler_name_vendor_mapping">
+<code class="descname">compiler_name_vendor_mapping</code><em class="property"> = None</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.compiler_name_vendor_mapping" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.default_compile_options">
+<code class="descname">default_compile_options</code><em class="property"> = ('pic', 'warn', 'fast')</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.default_compile_options" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="pycompilation.runners.CompilerRunner.find_compiler">
+<em class="property">classmethod </em><code class="descname">find_compiler</code><span class="sig-paren">(</span><em>preferred_vendor</em>, <em>metadir</em>, <em>cwd</em>, <em>use_meta=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#CompilerRunner.find_compiler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.CompilerRunner.find_compiler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identify a suitable C/fortran/other compiler</p>
+<p>When it is possible that the user (un)installs a compiler
+inbetween compilations of object files we want to catch
+that. This method allows compiler choice to be stored in a
+pickled metadata file.  Provide metadir a dirpath to
+make the class save choice there in a file with
+cls.metadata_filename as name.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.logger">
+<code class="descname">logger</code><em class="property"> = None</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.metadata_filename">
+<code class="descname">metadata_filename</code><em class="property"> = '.metadata_CompilerRunner'</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.metadata_filename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.option_flag_dict">
+<code class="descname">option_flag_dict</code><em class="property"> = None</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.option_flag_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycompilation.runners.CompilerRunner.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#CompilerRunner.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.CompilerRunner.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.standards">
+<code class="descname">standards</code><em class="property"> = None</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.standards" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.std_formater">
+<code class="descname">std_formater</code><em class="property"> = None</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.std_formater" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CompilerRunner.vendor_options_dict">
+<code class="descname">vendor_options_dict</code><em class="property"> = {'gnu': {'lapack': {'libraries': ['lapack', 'blas']}}, 'intel': {'lapack': {'library_dirs': ['${MKLROOT}/lib/intel64'], 'linkline': ['-Wl,--start-group  ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group'], 'def_macros': ['MKL_ILP64'], 'include_dirs': ['${MKLROOT}/include'], 'libraries': ['pthread', 'm'], 'flags': ['-openmp']}}, 'llvm': {'lapack': {'libraries': ['lapack', 'blas']}}}</em><a class="headerlink" href="#pycompilation.runners.CompilerRunner.vendor_options_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.runners.CppCompilerRunner">
+<em class="property">class </em><code class="descclassname">pycompilation.runners.</code><code class="descname">CppCompilerRunner</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#CppCompilerRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pycompilation.runners.CompilerRunner" title="pycompilation.runners.CompilerRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">pycompilation.runners.CompilerRunner</span></code></a>, <a class="reference internal" href="#pycompilation.util.HasMetaData" title="pycompilation.util.HasMetaData"><code class="xref py py-class docutils literal notranslate"><span class="pre">pycompilation.util.HasMetaData</span></code></a></p>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>logger</strong></td>
+<td>&#160;</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">cmd</span></code>()</td>
+<td>The command below covers most cases, if you need someting more complex subclass this.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_compiler</span></code>(preferred_vendor,&nbsp;metadir,&nbsp;cwd)</td>
+<td>Identify a suitable C/fortran/other compiler</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_from_metadata_file</span></code>(dirpath,&nbsp;key)</td>
+<td>Get value of key in metadata file dict.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_metadata_file</span></code>(dirpath,&nbsp;key,&nbsp;value)</td>
+<td>Store <cite>key: value</cite> in metadata file dict.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="pycompilation.runners.CppCompilerRunner.compiler_dict">
+<code class="descname">compiler_dict</code><em class="property"> = {'gnu': 'g++', 'intel': 'icpc', 'llvm': 'clang++'}</em><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner.compiler_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CppCompilerRunner.compiler_name_vendor_mapping">
+<code class="descname">compiler_name_vendor_mapping</code><em class="property"> = {'clang++': 'llvm', 'g++': 'gnu', 'icpc': 'intel'}</em><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner.compiler_name_vendor_mapping" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CppCompilerRunner.lib_dict">
+<code class="descname">lib_dict</code><em class="property"> = {'g++': {'openmp': ('gomp',), 'fortran': ('gfortran',)}, 'icpc': {'openmp': ('iomp5',)}}</em><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner.lib_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CppCompilerRunner.option_flag_dict">
+<code class="descname">option_flag_dict</code><em class="property"> = {'clang++': {}, 'g++': {}, 'icpc': {}}</em><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner.option_flag_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CppCompilerRunner.standards">
+<code class="descname">standards</code><em class="property"> = ('c++98', 'c++0x')</em><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner.standards" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.CppCompilerRunner.std_formater">
+<code class="descname">std_formater</code><em class="property"> = {'clang++': &lt;built-in method format of str object at 0x7f9eaa5ac420&gt;, 'g++': &lt;built-in method format of str object at 0x7f9eaa5ac420&gt;, 'icpc': &lt;built-in method format of str object at 0x7f9eaa5ac420&gt;}</em><a class="headerlink" href="#pycompilation.runners.CppCompilerRunner.std_formater" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.runners.FortranCompilerRunner">
+<em class="property">class </em><code class="descclassname">pycompilation.runners.</code><code class="descname">FortranCompilerRunner</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/runners.html#FortranCompilerRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pycompilation.runners.CompilerRunner" title="pycompilation.runners.CompilerRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">pycompilation.runners.CompilerRunner</span></code></a>, <a class="reference internal" href="#pycompilation.util.HasMetaData" title="pycompilation.util.HasMetaData"><code class="xref py py-class docutils literal notranslate"><span class="pre">pycompilation.util.HasMetaData</span></code></a></p>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><strong>logger</strong></td>
+<td>&#160;</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">cmd</span></code>()</td>
+<td>The command below covers most cases, if you need someting more complex subclass this.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_compiler</span></code>(preferred_vendor,&nbsp;metadir,&nbsp;cwd)</td>
+<td>Identify a suitable C/fortran/other compiler</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_from_metadata_file</span></code>(dirpath,&nbsp;key)</td>
+<td>Get value of key in metadata file dict.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_metadata_file</span></code>(dirpath,&nbsp;key,&nbsp;value)</td>
+<td>Store <cite>key: value</cite> in metadata file dict.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="pycompilation.runners.FortranCompilerRunner.compiler_dict">
+<code class="descname">compiler_dict</code><em class="property"> = {'gnu': 'gfortran', 'intel': 'ifort', 'llvm': 'gfortran'}</em><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner.compiler_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.FortranCompilerRunner.compiler_name_vendor_mapping">
+<code class="descname">compiler_name_vendor_mapping</code><em class="property"> = {'gfortran': 'gnu', 'ifort': 'intel'}</em><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner.compiler_name_vendor_mapping" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.FortranCompilerRunner.lib_dict">
+<code class="descname">lib_dict</code><em class="property"> = {'gfortran': {'openmp': ('gomp',)}, 'ifort': {'openmp': ('iomp5',)}}</em><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner.lib_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.FortranCompilerRunner.option_flag_dict">
+<code class="descname">option_flag_dict</code><em class="property"> = {'gfortran': {'debug': ('-g',), 'warn': ('-Wall', '-Wextra', '-Wimplicit-interface')}, 'ifort': {'debug': ('-g',), 'warn': ('-warn', 'all')}}</em><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner.option_flag_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.FortranCompilerRunner.standards">
+<code class="descname">standards</code><em class="property"> = (None, 'f95', 'f2003', 'f2008')</em><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner.standards" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.runners.FortranCompilerRunner.std_formater">
+<code class="descname">std_formater</code><em class="property"> = {'gfortran': &lt;built-in method format of str object at 0x7f9eaa5acb90&gt;, 'ifort': &lt;function FortranCompilerRunner.&lt;lambda&gt; at 0x7f9eaa632ea0&gt;}</em><a class="headerlink" href="#pycompilation.runners.FortranCompilerRunner.std_formater" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycompilation.util">
+<span id="pycompilation-util-module"></span><h2>pycompilation.util module<a class="headerlink" href="#module-pycompilation.util" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pycompilation.util.ArbitraryDepthGlob">
+<em class="property">class </em><code class="descclassname">pycompilation.util.</code><code class="descname">ArbitraryDepthGlob</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="headerlink" href="#pycompilation.util.ArbitraryDepthGlob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#pycompilation.util.ArbitraryDepthGlob.filename" title="pycompilation.util.ArbitraryDepthGlob.filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filename</span></code></a></td>
+<td>Alias for field number 0</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">count</span></code>(value)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">index</span></code>(value,&nbsp;[start,&nbsp;[stop]])</td>
+<td>Raises ValueError if the value is not present.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="pycompilation.util.ArbitraryDepthGlob.filename">
+<code class="descname">filename</code><a class="headerlink" href="#pycompilation.util.ArbitraryDepthGlob.filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="exception">
+<dt id="pycompilation.util.CompilationError">
+<em class="property">exception </em><code class="descclassname">pycompilation.util.</code><code class="descname">CompilationError</code><a class="reference internal" href="_modules/pycompilation/util.html#CompilationError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.CompilationError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="pycompilation.util.FileNotFoundError">
+<em class="property">exception </em><code class="descclassname">pycompilation.util.</code><code class="descname">FileNotFoundError</code><a class="reference internal" href="_modules/pycompilation/util.html#FileNotFoundError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.FileNotFoundError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.util.Glob">
+<em class="property">class </em><code class="descclassname">pycompilation.util.</code><code class="descname">Glob</code><span class="sig-paren">(</span><em>pathname</em><span class="sig-paren">)</span><a class="headerlink" href="#pycompilation.util.Glob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#pycompilation.util.Glob.pathname" title="pycompilation.util.Glob.pathname"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pathname</span></code></a></td>
+<td>Alias for field number 0</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">count</span></code>(value)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">index</span></code>(value,&nbsp;[start,&nbsp;[stop]])</td>
+<td>Raises ValueError if the value is not present.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="pycompilation.util.Glob.pathname">
+<code class="descname">pathname</code><a class="headerlink" href="#pycompilation.util.Glob.pathname" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycompilation.util.HasMetaData">
+<em class="property">class </em><code class="descclassname">pycompilation.util.</code><code class="descname">HasMetaData</code><a class="reference internal" href="_modules/pycompilation/util.html#HasMetaData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.HasMetaData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Provides convenice classmethods for a class to pickle some metadata.</p>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#pycompilation.util.HasMetaData.get_from_metadata_file" title="pycompilation.util.HasMetaData.get_from_metadata_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_from_metadata_file</span></code></a>(dirpath,&nbsp;key)</td>
+<td>Get value of key in metadata file dict.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#pycompilation.util.HasMetaData.save_to_metadata_file" title="pycompilation.util.HasMetaData.save_to_metadata_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_metadata_file</span></code></a>(dirpath,&nbsp;key,&nbsp;value)</td>
+<td>Store <cite>key: value</cite> in metadata file dict.</td>
+</tr>
+</tbody>
+</table>
+<dl class="classmethod">
+<dt id="pycompilation.util.HasMetaData.get_from_metadata_file">
+<em class="property">classmethod </em><code class="descname">get_from_metadata_file</code><span class="sig-paren">(</span><em>dirpath</em>, <em>key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#HasMetaData.get_from_metadata_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.HasMetaData.get_from_metadata_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get value of key in metadata file dict.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pycompilation.util.HasMetaData.metadata_filename">
+<code class="descname">metadata_filename</code><em class="property"> = '.metadata'</em><a class="headerlink" href="#pycompilation.util.HasMetaData.metadata_filename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="pycompilation.util.HasMetaData.save_to_metadata_file">
+<em class="property">classmethod </em><code class="descname">save_to_metadata_file</code><span class="sig-paren">(</span><em>dirpath</em>, <em>key</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#HasMetaData.save_to_metadata_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.HasMetaData.save_to_metadata_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Store <cite>key: value</cite> in metadata file dict.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.MetaReaderWriter">
+<code class="descclassname">pycompilation.util.</code><code class="descname">MetaReaderWriter</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#MetaReaderWriter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.MetaReaderWriter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.copy">
+<code class="descclassname">pycompilation.util.</code><code class="descname">copy</code><span class="sig-paren">(</span><em>src</em>, <em>dst</em>, <em>only_update=False</em>, <em>copystat=True</em>, <em>cwd=None</em>, <em>dest_is_dir=False</em>, <em>create_dest_dirs=False</em>, <em>logger=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Augmented shutil.copy with extra options and slightly
+modified behaviour</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>src: string</strong></p>
+<blockquote>
+<div><p>path to source file</p>
+</div></blockquote>
+<p><strong>dst: string</strong></p>
+<blockquote>
+<div><p>path to destingation</p>
+</div></blockquote>
+<p><strong>only_update: bool</strong></p>
+<blockquote>
+<div><p>only copy if source is newer than destination
+(returns None if it was newer), default: False</p>
+</div></blockquote>
+<p><strong>copystat: bool</strong></p>
+<blockquote>
+<div><p>See shutil.copystat. default: True</p>
+</div></blockquote>
+<p><strong>cwd: string</strong></p>
+<blockquote>
+<div><p>Path to working directory (root of relative paths)</p>
+</div></blockquote>
+<p><strong>dest_is_dir: bool</strong></p>
+<blockquote>
+<div><p>ensures that dst is treated as a directory. default: False</p>
+</div></blockquote>
+<p><strong>create_dest_dirs: bool</strong></p>
+<blockquote>
+<div><p>creates directories if needed.</p>
+</div></blockquote>
+<p><strong>logger: logging.Looger</strong></p>
+<blockquote>
+<div><p>debug level info emitted. Passed onto make_dirs.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Path to the copied file.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.expand_collection_in_dict">
+<code class="descclassname">pycompilation.util.</code><code class="descname">expand_collection_in_dict</code><span class="sig-paren">(</span><em>d</em>, <em>key</em>, <em>new_items</em>, <em>no_duplicates=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#expand_collection_in_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.expand_collection_in_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parameters
+d: dict</p>
+<blockquote>
+<div>dict in which a key will be inserted/expanded</div></blockquote>
+<dl class="docutils">
+<dt>key: hashable</dt>
+<dd>key in d</dd>
+<dt>new_items: iterable</dt>
+<dd>d[key] will be extended with items in new_items</dd>
+<dt>no_duplicates: bool</dt>
+<dd>avoid inserting duplicates in d[key] (default: True)</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.find_binary_of_command">
+<code class="descclassname">pycompilation.util.</code><code class="descname">find_binary_of_command</code><span class="sig-paren">(</span><em>candidates</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#find_binary_of_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.find_binary_of_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls <cite>find_executable</cite> from distuils for
+provided candidates and returns first hit.
+If no candidate mathces, a RuntimeError is raised</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.get_abspath">
+<code class="descclassname">pycompilation.util.</code><code class="descname">get_abspath</code><span class="sig-paren">(</span><em>path</em>, <em>cwd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#get_abspath"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.get_abspath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.glob_at_depth">
+<code class="descclassname">pycompilation.util.</code><code class="descname">glob_at_depth</code><span class="sig-paren">(</span><em>filename_glob</em>, <em>cwd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#glob_at_depth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.glob_at_depth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.import_module_from_file">
+<code class="descclassname">pycompilation.util.</code><code class="descname">import_module_from_file</code><span class="sig-paren">(</span><em>filename</em>, <em>only_if_newer_than=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#import_module_from_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.import_module_from_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Imports (cython generated) shared object file (.so)</p>
+<p>Provide a list of paths in <cite>only_if_newer_than</cite> to check
+timestamps of dependencies. <a href="#id7"><span class="problematic" id="id8">import_</span></a> raises an ImportError
+if any is newer.</p>
+<p>Word of warning: Python’s caching or the OS caching (unclear to author)
+is horrible for reimporting same path of an .so file. It will
+not detect the new time stamp nor new checksum but will use old
+module.</p>
+<p>Use unique names for this reason.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename: string</strong></p>
+<blockquote>
+<div><p>path to shared object</p>
+</div></blockquote>
+<p><strong>only_if_newer_than: iterable of strings</strong></p>
+<blockquote>
+<div><p>paths to dependencies of the shared object</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>ImportError if any of the files specified in only_if_newer_than are newer</strong></p>
+<p class="last"><strong>than the file given by filename.</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.make_dirs">
+<code class="descclassname">pycompilation.util.</code><code class="descname">make_dirs</code><span class="sig-paren">(</span><em>path</em>, <em>logger=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#make_dirs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.make_dirs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.md5_of_file">
+<code class="descclassname">pycompilation.util.</code><code class="descname">md5_of_file</code><span class="sig-paren">(</span><em>path</em>, <em>nblocks=128</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#md5_of_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.md5_of_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the md5 hash of a file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>path: string</strong></p>
+<blockquote>
+<div><p>path to file to compute hash of</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">hashlib md5 hash object. Use .digest() or .hexdigest()</p>
+<p class="last">on returned object to get binary or hex encoded string.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.md5_of_string">
+<code class="descclassname">pycompilation.util.</code><code class="descname">md5_of_string</code><span class="sig-paren">(</span><em>string</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#md5_of_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.md5_of_string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.missing_or_other_newer">
+<code class="descclassname">pycompilation.util.</code><code class="descname">missing_or_other_newer</code><span class="sig-paren">(</span><em>path</em>, <em>other_path</em>, <em>cwd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#missing_or_other_newer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.missing_or_other_newer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Investigate if path is non-existant or older than provided reference
+path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>path: string</strong></p>
+<blockquote>
+<div><p>path to path which might be missing or too old</p>
+</div></blockquote>
+<p><strong>other_path: string</strong></p>
+<blockquote>
+<div><p>reference path</p>
+</div></blockquote>
+<p><strong>cwd: string</strong></p>
+<blockquote>
+<div><p>working directory (root of relative paths)</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if path is older or missing.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.pyx_is_cplus">
+<code class="descclassname">pycompilation.util.</code><code class="descname">pyx_is_cplus</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#pyx_is_cplus"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.pyx_is_cplus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inspect a Cython source file (.pyx) and look for comment line like:</p>
+<p># distutils: language = c++</p>
+<p>Returns True if such a file is present in the file, else False.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycompilation.util.uniquify">
+<code class="descclassname">pycompilation.util.</code><code class="descname">uniquify</code><span class="sig-paren">(</span><em>l</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycompilation/util.html#uniquify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycompilation.util.uniquify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uniquify a list (skip duplicate items).</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Welcome to pycompilation’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Bjoern I. Dahlgren &lt;bjodah@gmail.com&gt;.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.4.4',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
