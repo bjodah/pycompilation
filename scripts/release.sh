@@ -37,5 +37,5 @@ echo "    name the release \"${PKG}-${VERSION}\", and don't foreget to manually 
 echo "        $(openssl sha256 $(pwd)/dist/${PKG}-${VERSION}.tar.gz)"
 echo "    Then run:"
 echo ""
-echo "        $ ./scripts/post_release.sh $1 $2 myserver.university.edu"
+echo "        $ ./scripts/post_release.sh $1 myserver.university.edu"
 echo ""
