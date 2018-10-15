@@ -13,7 +13,7 @@ TAGS
 doc/*
 build/
 dist/
-.cache/
+.*cache/
 htmlcov/
 .metadata_*
 .coverage
