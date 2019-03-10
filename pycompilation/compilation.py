@@ -206,6 +206,12 @@ def link(obj_files, out_file=None, shared=False, CompilerRunner_=None,
     if shared:
         if '-shared' not in flags:
             flags.append('-shared')
+
+        # mimic GNU linker behavior on OS X when using -shared
+        # (otherwise likely Undefined symbol errors)
+        dl_flag = '-undefined dynamic_lookup'
+        if sys.platform == 'darwin' and dl_flag not in flags:
+            flags.append(dl_flag)
     run_linker = kwargs.pop('run_linker', True)
     if not run_linker:
         raise ValueError("link(..., run_linker=False)!?")
