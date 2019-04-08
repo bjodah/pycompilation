@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import warnings
 
 from .util import (
     HasMetaData, get_abspath, FileNotFoundError,
@@ -139,10 +140,24 @@ class CompilerRunner(object):
 
         self.out = out
         self.flags = flags or []
+        if os.environ.get(self.environ_key_flags):
+            self.flags += os.environ[self.environ_key_flags].split()
         self.metadir = metadir
         self.cwd = cwd
-        if compiler:
-            self.compiler_name, self.compiler_binary = compiler
+        if compiler or os.environ.get(self.environ_key_compiler):
+            if compiler:
+                self.compiler_name, self.compiler_binary = compiler
+            else:
+                self.compiler_binary = os.environ[self.environ_key_compiler]
+                for vk, cn in self.compiler_dict.items():
+                    if cn in self.compiler_binary:
+                        self.compiler_vendor = vk
+                        self.compiler_name = cn
+                        break
+                else:
+                    self.compiler_vendor, self.compiler_name = list(self.compiler_dict.items())[0]
+                    warnings.warn("unsure of what kind of compiler %s is, assuming %s" %
+                                  (self.compiler_binary, self.compiler_name))
             self.save_to_metadata_file(
                 self.metadir, 'vendor',
                 self.compiler_name_vendor_mapping[
@@ -364,6 +379,9 @@ class CompilerRunner(object):
 
 class CCompilerRunner(CompilerRunner, HasMetaData):
 
+    environ_key_compiler = 'CC'
+    environ_key_flags = 'CFLAGS'
+
     compiler_dict = OrderedDict([
         ('gnu', 'gcc'),
         ('intel', 'icc'),
@@ -426,6 +444,9 @@ def _mk_flag_filter(cmplr_name):  # helper for class initialization
 
 class CppCompilerRunner(CompilerRunner, HasMetaData):
 
+    environ_key_compiler = 'CXX'
+    environ_key_flags = 'CXXFLAGS'
+
     compiler_dict = OrderedDict([
         ('gnu', 'g++'),
         ('intel', 'icpc'),
@@ -485,6 +506,9 @@ class CppCompilerRunner(CompilerRunner, HasMetaData):
 
 
 class FortranCompilerRunner(CompilerRunner, HasMetaData):
+
+    environ_key_compiler = 'FC'
+    environ_key_flags = 'FFLAGS'
 
     standards = (None, 'f95', 'f2003', 'f2008')  # First is default (F77)
 
