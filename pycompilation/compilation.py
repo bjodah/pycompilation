@@ -40,7 +40,10 @@ from .runners import (
 
 from distutils.sysconfig import get_config_var
 
-sharedext = get_config_var('SO')
+if sys.version_info[0] == 2:  # python 2
+    sharedext = get_config_var('SO')
+else:
+    sharedext = get_config_var('EXT_SUFFIX')
 
 if os.name == 'posix':  # Future improvement to make cross-platform
     # flagprefix = '-'
