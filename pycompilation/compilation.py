@@ -40,10 +40,10 @@ from .runners import (
 
 from distutils.sysconfig import get_config_var
 
-if sys.version_info[0] == 2:  # python 2
-    sharedext = get_config_var('SO')
-else:
-    sharedext = get_config_var('EXT_SUFFIX')
+#if sys.version_info[0] == 2:  # python 2
+sharedext = get_config_var('SO')
+#else:
+#    sharedext = get_config_var('EXT_SUFFIX')
 
 if os.name == 'posix':  # Future improvement to make cross-platform
     # flagprefix = '-'
@@ -261,7 +261,6 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
 
     include_dirs = kwargs.pop('include_dirs', [])
     library_dirs = kwargs.pop('library_dirs', [])
-
     # from distutils/command/build_ext.py:
     if sys.platform == "win32":
         warnings.warn("Windows not yet supported.")
@@ -271,20 +270,17 @@ def link_py_so(obj_files, so_file=None, cwd=None, libraries=None,
     elif sys.platform[:3] == 'aix':
         # Don't use the default code below
         pass
-    else:
+    elif get_config_var('Py_ENABLE_SHARED'):
         # LIBDIR/INSTSONAME should always points to libpython (dynamic or static)
         pylib = os.path.join(get_config_var('LIBDIR'), get_config_var('INSTSONAME'))
         if os.path.exists(pylib):
             libraries.append(pylib)
         else:
-            if get_config_var('Py_ENABLE_SHARED'):
-                ABIFLAGS = get_config_var('ABIFLAGS')
-                pythonlib = 'python{}.{}{}'.format(
-                    sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff,
-                    ABIFLAGS or '')
-                libraries += [pythonlib]
-            else:
-                pass
+            ABIFLAGS = get_config_var('ABIFLAGS')
+            pythonlib = 'python{}.{}{}'.format(
+                sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff,
+                ABIFLAGS or '')
+            libraries += [pythonlib]
 
     flags = kwargs.pop('flags', [])
     needed_flags = ('-pthread',)
