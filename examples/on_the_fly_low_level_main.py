@@ -88,7 +88,7 @@ void initadder(void)
 def main():
     from distutils.sysconfig import get_python_inc
     mod = compile_link_import_strings(
-        sources_, include_dirs=[get_python_inc()])
+        sources_, include_dirs=[get_python_inc()], std="c99")
     assert abs(mod.add(2.0, 4.0) - 6.0) < 1e-15
     assert abs(mod.add(2, 2) - 4.0) < 1e-15
     try:
