@@ -13,7 +13,7 @@ pipeline:
       - export CPATH=$SUNDBASE/include:$CPATH
       - export LIBRARY_PATH=$SUNDBASE/lib:$LIBRARY_PATH
       - export LD_LIBRARY_PATH=$SUNDBASE/lib:$LD_LIBRARY_PATH
-      - bash -c '[[ $(python setup.py --version) =~ ^[0-9]+.* ]]'
+      - bash -c '[[ $(python3 setup.py --version) =~ ^[0-9]+.* ]]'
       - ./scripts/ci.sh pycompilation
       - PATH=$HOME/.local/bin:$PATH ./scripts/generate_docs.sh
       - ./scripts/prepare_deploy.sh
