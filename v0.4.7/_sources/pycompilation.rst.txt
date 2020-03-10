@@ -1,0 +1,43 @@
+pycompilation package
+=====================
+
+.. automodule:: pycompilation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+pycompilation.compilation module
+--------------------------------
+
+.. automodule:: pycompilation.compilation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pycompilation.dist module
+-------------------------
+
+.. automodule:: pycompilation.dist
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pycompilation.runners module
+----------------------------
+
+.. automodule:: pycompilation.runners
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pycompilation.util module
+-------------------------
+
+.. automodule:: pycompilation.util
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
