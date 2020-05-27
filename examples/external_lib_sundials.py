@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# cython: language_level=3
 
 import math
 import os
+import shutil
 import tempfile
 import uuid
 
@@ -11,9 +13,9 @@ import numpy as np
 from scipy.special import binom
 
 from pycompilation import compile_link_import_py_ext
-
-template_integrate_serial_c89 = open(os.path.dirname(__file__) + "/external_lib_sundials_integrate_serial_template.c89").read()
-template_integrate_serial_pyx = open(os.path.dirname(__file__) + "/external_lib_sundials_integrate_serial_template.pyx").read()
+_template_base = os.path.dirname(__file__) + "/external_lib_sundials_integrate_serial_template"
+template_integrate_serial_c89 = open(_template_base + ".c89").read()
+template_integrate_serial_pyx = open(_template_base + ".pyx").read()
 
 
 class ODEsys:
@@ -40,8 +42,8 @@ class ODEsys:
         j_exprs = ['col_%d[%d] = %s;' % (ci, ri, self.j[ri, ci].xreplace(subs))
                    for ci in idxs for ri in idxs if self.j[ri, ci] != 0]
         ctx = dict(
-            func = '\n    '.join(f_exprs + ['return 0;']),
-            dense_jac = '\n    '.join(j_col_defs + j_exprs + ['return 0;']),
+            func='\n    '.join(f_exprs + ['return 0;']),
+            dense_jac='\n    '.join(j_col_defs + j_exprs + ['return 0;']),
         )
         sources = {
             build_dir + '/integrate_serial_%s.c' % self.uid: template_integrate_serial_c89 % ctx,
