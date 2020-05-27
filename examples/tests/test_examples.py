@@ -34,5 +34,5 @@ def test_cflags_ldflags_sundials():
     env["CFLAGS"] = "PYCOMPILATION_TESTING_SUNDIALS_CFLAGS"
     env["LDFLAGS"] = "PYCOMPILATION_TESTING_SUNDIALS_LDFLAGS"
     p = subprocess.Popen([sys.executable, "../external_lib_sundials.py", '--clean'],
-                         cwd=os.path.join(os.path.dirname(__file__), '..'), env=env)
+                         cwd=os.path.join(os.path.dirname(__file__)), env=env)
     assert p.wait() == os.EX_OK
