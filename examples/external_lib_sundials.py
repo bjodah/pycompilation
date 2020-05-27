@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import math
+import os
 import tempfile
 import uuid
 
@@ -11,8 +12,8 @@ from scipy.special import binom
 
 from pycompilation import compile_link_import_py_ext
 
-template_integrate_serial_c89 = open("external_lib_sundials_integrate_serial_template.c89").read()
-template_integrate_serial_pyx = open("external_lib_sundials_integrate_serial_template.pyx").read()
+template_integrate_serial_c89 = open(os.path.dirname(__file__) + "/external_lib_sundials_integrate_serial_template.c89").read()
+template_integrate_serial_pyx = open(os.path.dirname(__file__) + "/external_lib_sundials_integrate_serial_template.pyx").read()
 
 
 class ODEsys:
