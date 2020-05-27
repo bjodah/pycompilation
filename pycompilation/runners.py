@@ -68,6 +68,7 @@ class CompilerRunner(object):
     """
 
     compiler_dict = None  # Subclass to vendor/binary dict
+    environ_key_ldflags = 'LDFLAGS'
 
     # Standards should be a tuple of supported standards
     # (first one will be the default)
@@ -83,7 +84,7 @@ class CompilerRunner(object):
 
     logger = None
 
-    default_compile_options = ('pic', 'warn', 'fast')
+    default_compile_options = ('pic', 'warn')  # , 'fast'
 
     # http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
     # MKL 11.1 x86-64, *nix, MKLROOT env. set, dynamic linking
@@ -195,7 +196,7 @@ class CompilerRunner(object):
             self.flags.append(self.std_formater[
                 self.compiler_name](self.std))
 
-        self.linkline = []
+        self.linkline = [lf for lf in map(str.strip, os.environ.get(self.environ_key_flags, "").split()) if lf != ""]
 
         # Handle options
         for opt in self.options:

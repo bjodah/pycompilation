@@ -1,0 +1,141 @@
+/* -*- mode: c -*- */
+#include <cvode/cvode.h>                     /* prototypes for CVODE fcts., consts.  */
+#include <nvector/nvector_serial.h>          /* access to serial N_Vector            */
+#include <sunmatrix/sunmatrix_dense.h>       /* access to dense SUNMatrix            */
+#include <sunlinsol/sunlinsol_lapackdense.h> /* access to dense SUNLinearSolver      */
+#include <sundials/sundials_types.h>         /* defs. of realtype, sunindextype      */
+
+#define OUR_RESTRICT
+#ifndef OUR_RESTRICT
+  #if defined (__STDC_VERSION__)
+    #if __STDC_VERSION__ >= 199901L
+      #define OUR_RESTRICT restrict
+    #else
+      #define OUR_RESTRICT
+    #endif
+  #else
+    #if defined(__GNUC__)
+      #define _RESTRICT __restrict__
+    #elif defined(_MSC_VER) && _MSC_VER >= 1400
+      #define OUR_RESTRICT __restrict
+    #else
+      #define OUR_RESTRICT
+    #endif
+  #endif
+#endif
+
+#include <string.h> /* memcpy */
+
+int func (realtype t, N_Vector nv_y, N_Vector f, void * params) {
+    const realtype * const OUR_RESTRICT p = (realtype *) params;
+    const realtype * const OUR_RESTRICT y = &NV_Ith_S(nv_y, 0);
+    realtype * const OUR_RESTRICT out = &NV_Ith_S(f, 0);
+    %(func)s
+}
+
+int dense_jac (realtype t, N_Vector nv_y, N_Vector fy, SUNMatrix J, void *params, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) {
+    const realtype * const OUR_RESTRICT p = (realtype *) params;
+    const realtype * const OUR_RESTRICT y = &NV_Ith_S(nv_y, 0);
+    %(dense_jac)s
+}
+
+enum status_e {
+    STATUS_SUCCESS = 0
+    , STATUS_FOUT = 1000
+    , STATUS_Y
+    , STATUS_ABSTOL
+    , STATUS_CVODE_MEM
+};
+
+int integrate(const realtype * const OUR_RESTRICT tout,
+              const realtype * const OUR_RESTRICT y0,
+              int nt, int ny,
+              void * params,
+              const realtype * const OUR_RESTRICT abstol,
+              realtype reltol,
+              realtype * const OUR_RESTRICT yout,
+              long int * const OUR_RESTRICT info)
+{
+    int i;
+    enum status_e status = STATUS_SUCCESS;
+    N_Vector nv_y = NULL;
+    N_Vector nv_abstol = NULL;
+    SUNMatrix mat_A = NULL;
+    SUNLinearSolver ls = NULL;
+
+    void *cvode_mem = NULL;
+    realtype cur_t = tout[0];
+
+    nv_y = N_VMake_Serial(ny, (realtype *)y0);
+    if (nv_y == NULL){
+        status = STATUS_Y;
+        goto exit_y;
+    }
+
+    nv_abstol = N_VMake_Serial(ny, (realtype *)abstol);
+    if (nv_abstol == NULL){
+        status = STATUS_ABSTOL;
+        goto exit_abstol;
+    }
+
+    /* For now we skip CV_FUNCTIONAL only use CV_NEWTON */
+    cvode_mem = CVodeCreate(CV_BDF); 
+    if (cvode_mem == NULL){
+        status = STATUS_CVODE_MEM;
+        goto exit_cvode_mem;
+    }
+
+    status = CVodeInit(cvode_mem, func, tout[0], nv_y);
+    if (status != 0) goto exit_dense_matrix;
+
+    status = CVodeSVtolerances(cvode_mem, reltol, nv_abstol);
+    if (status != 0) goto exit_dense_matrix;
+
+    mat_A = SUNDenseMatrix(ny, ny);
+    if(mat_A == NULL) goto exit_dense_matrix;
+
+    ls = SUNLinSol_LapackDense(nv_y, mat_A);
+    if(ls == NULL) goto exit_linear_solver;
+
+    status = CVodeSetLinearSolver(cvode_mem, ls, mat_A);
+    if(status != 0) goto exit_runtime;
+
+    /* Set the user-supplied Jacobian routine Jac */
+    status = CVodeSetJacFn(cvode_mem, dense_jac);
+    if (status != 0) goto exit_runtime;
+
+    status = CVodeSetUserData(cvode_mem, params);
+    if (status != 0) goto exit_runtime;
+
+    /* Store output before first step */
+    memcpy(yout, y0, sizeof(realtype)*ny);
+    /* Run integration */
+    for (i = 1; i < nt; ++i){
+        status = CVode(cvode_mem, tout[i], nv_y, &cur_t, CV_NORMAL);
+        if (status != CV_SUCCESS)
+            break;
+        memcpy(yout + ny*i, &NV_Ith_S(nv_y, 0), sizeof(realtype)*ny); /* copy to output argument */
+    }
+    CVodeGetNumSteps(cvode_mem, info);
+    CVodeGetNumRhsEvals(cvode_mem, info + 1);
+    CVodeGetNumLinSolvSetups(cvode_mem, info + 2);
+    CVodeGetNumErrTestFails(cvode_mem, info + 3);
+    CVodeGetNumNonlinSolvIters(cvode_mem, info + 4);
+    CVodeGetNumNonlinSolvConvFails(cvode_mem, info + 5);
+
+    CVodeGetNumJacEvals(cvode_mem, info + 6);
+    CVodeGetNumLinRhsEvals(cvode_mem, info + 7);
+    /* Error handling */
+ exit_runtime:
+    SUNLinSolFree(ls);
+ exit_linear_solver:
+    SUNMatDestroy(mat_A);
+ exit_dense_matrix:
+    CVodeFree(&cvode_mem);    
+ exit_cvode_mem: 
+    N_VDestroy_Serial(nv_abstol);
+ exit_abstol:
+    N_VDestroy_Serial(nv_y);
+ exit_y:
+    return status;
+}

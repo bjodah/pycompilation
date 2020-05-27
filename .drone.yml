@@ -1,18 +1,11 @@
 pipeline:
   build:
-    image: bjodah/bjodahimg20dev:v1.0.3
+    image: bjodah/bjodahimg20dev:v1.2.0
     environment:
-      - PYCVODES_LAPACK=lapack,blas
-      - PYCVODES_SUNDIALS_LIBS=sundials_cvodes,sundials_nvecserial,sundials_sunlinsollapackdense,sundials_sunlinsollapackband,sundials_sunlinsolklu
-      - PYCVODES_NO_KLU=0
-      - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
-      - CPATH=/usr/include/suitesparse
-      - CPLUS_INCLUDE_PATH=/opt/boost_1_72_p/include
-      - SUNDBASE=/opt/sundials-5.1.0-klu-lapack
+      - CPLUS_INCLUDE_PATH=/opt/boost_1_73_p/include
+      - PYCOMPILATION_TESTING_SUNDIALS_CFLAGS="-isystem /opt/sundials-5.3.0-klu-lapack/include"
+      - PYCOMPILATION_TESTING_SUNDIALS_LDFLAGS="-Wl,--disable-new-dtags -Wl,-rpath,/opt/sundials-5.3.0-klu-lapack/lib -L/opt/sundials-5.3.0-klu-lapack/lib"
     commands:
-      - export CPATH=$SUNDBASE/include:$CPATH
-      - export LIBRARY_PATH=$SUNDBASE/lib:$LIBRARY_PATH
-      - export LD_LIBRARY_PATH=$SUNDBASE/lib:$LD_LIBRARY_PATH
       - bash -c '[[ $(python3 setup.py --version) =~ ^[0-9]+.* ]]'
       - ./scripts/ci.sh pycompilation
       - PATH=$HOME/.local/bin:$PATH ./scripts/generate_docs.sh
