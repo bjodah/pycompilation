@@ -196,7 +196,7 @@ class CompilerRunner(object):
             self.flags.append(self.std_formater[
                 self.compiler_name](self.std))
 
-        self.linkline = [lf for lf in map(str.strip, os.environ.get(self.environ_key_flags, "").split()) if lf != ""]
+        self.linkline = [lf for lf in map(str.strip, os.environ.get(self.environ_key_ldflags, "").split()) if lf != ""]
 
         # Handle options
         for opt in self.options:
