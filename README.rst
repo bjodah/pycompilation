@@ -1,8 +1,9 @@
 pycompilation
 =============
 
-.. image:: https://travis-ci.org/bjodah/pycompilation.png?branch=master
-   :target: https://travis-ci.org/bjodah/pycompilation
+.. image:: http://hera.physchem.kth.se:8080/api/badges/bjodah/pycompilation/status.svg
+   :target: http://hera.physchem.kth.se:8080/bjodah/pycompilation
+   :alt: Build status
 
 
 pycompilation bundles python convenience classes and functions for performing compilation
