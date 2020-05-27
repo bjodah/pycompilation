@@ -102,6 +102,7 @@ def get_special_chain(n, p, a):
 
 def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8):
     if verbose:
+        import logging
         logging.basicConfig(level=logging.DEBUG)
         logger = logging.getLogger(__file__)
     else:
