@@ -129,7 +129,7 @@ class CompilerRunner(object):
                  library_dirs=None, std=None, options=None, define=None,
                  undef=None, strict_aliasing=None, logger=None,
                  preferred_vendor=None, metadir=None, lib_options=None,
-                 only_update=False, **kwargs):
+                 only_update=False, ldflags=None, **kwargs):
 
         cwd = cwd or '.'
         metadir = get_abspath(metadir or '.', cwd=cwd)
@@ -196,7 +196,8 @@ class CompilerRunner(object):
             self.flags.append(self.std_formater[
                 self.compiler_name](self.std))
 
-        self.linkline = [lf for lf in map(str.strip, os.environ.get(self.environ_key_ldflags, "").split()) if lf != ""]
+        self.linkline = (ldflags or []) + [lf for lf in map(
+            str.strip, os.environ.get(self.environ_key_ldflags, "").split()) if lf != ""]
 
         # Handle options
         for opt in self.options:
