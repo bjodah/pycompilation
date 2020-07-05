@@ -332,8 +332,6 @@ class CompilerRunner(object):
                     print(msg)
                 return self.out
 
-        self.flags = uniquify(self.flags)
-
         # Append output flag and name to tail of flags
         self.flags.extend(['-o', self.out])
 
