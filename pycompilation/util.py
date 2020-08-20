@@ -252,7 +252,8 @@ class HasMetaData(object):
         """
         fullpath = os.path.join(dirpath, cls.metadata_filename)
         if os.path.exists(fullpath):
-            d = pickle.load(open(fullpath, 'rb'))
+            with open(fullpath, 'rb') as ifh:
+                d = pickle.load(ifh)
             return d[key]
         else:
             raise FileNotFoundError(
@@ -265,7 +266,8 @@ class HasMetaData(object):
         """
         fullpath = os.path.join(dirpath, cls.metadata_filename)
         if os.path.exists(fullpath):
-            d = pickle.load(open(fullpath, 'rb'))
+            with open(fullpath, 'rb') as ifh:
+                d = pickle.load(ifh)
             d.update({key: value})
             with open(fullpath, 'wb') as ofh:
                 pickle.dump(d, ofh)
