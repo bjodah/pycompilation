@@ -319,6 +319,7 @@ def import_module_from_file(filename, only_if_newer_than=None):
             if os.path.getmtime(filename) < os.path.getmtime(dep):
                 raise ImportError("{} is newer than {}".format(dep, filename))
     mod = imp.load_module(name, fobj, filename, data)
+    fobj.close()
     return mod
 
 
