@@ -10,7 +10,7 @@ import warnings
 
 from .util import (
     HasMetaData, get_abspath, FileNotFoundError,
-    find_binary_of_command, uniquify, missing_or_other_newer,
+    find_binary_of_command, missing_or_other_newer,
     CompilationError,
 )
 

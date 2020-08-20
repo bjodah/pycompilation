@@ -267,9 +267,11 @@ class HasMetaData(object):
         if os.path.exists(fullpath):
             d = pickle.load(open(fullpath, 'rb'))
             d.update({key: value})
-            pickle.dump(d, open(fullpath, 'wb'))
+            with open(fullpath, 'wb') as ofh:
+                pickle.dump(d, ofh)
         else:
-            pickle.dump({key: value}, open(fullpath, 'wb'))
+            with open(fullpath, 'wb') as ofh:
+                pickle.dump({key: value}, ofh)
 
 
 def MetaReaderWriter(filename):
