@@ -709,7 +709,7 @@ def compile_link_import_strings(codes, build_dir=None, **kwargs):
             differs = md5_on_disk != md5_in_mem
         if not only_update or differs:
             with open(dest, 'wt') as ofh:
-                fh.write(code_)
+                ofh.write(code_)
                 with open(dest+'.md5', 'wt') as ofh_md5:
                     ofh_md5.write(md5_in_mem)
         source_files.append(dest)
