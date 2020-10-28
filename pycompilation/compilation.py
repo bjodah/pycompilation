@@ -535,7 +535,7 @@ def pyx2obj(pyxpath, objpath=None, interm_c_dir=None, cwd=None,
     cy_kwargs = cy_kwargs or {}
     cy_kwargs['output_dir'] = cwd
     if cplus is None:
-        cplus = pyx_is_cplus(pyxpath)
+        cplus = pyx_is_cplus(pyxpath if pyxpath.startswith('/') else os.path.join(cwd, pyxpath))
     cy_kwargs['cplus'] = cplus
     if gdb:
         cy_kwargs['gdb_debug'] = True
