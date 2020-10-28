@@ -1,0 +1,452 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pycompilation.dist &mdash; pycompilation 0.4.12 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> pycompilation
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.4.12
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pycompilation.html">pycompilation package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pycompilation</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>pycompilation.dist</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pycompilation.dist</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Interaction with distutils</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">absolute_import</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">from</span> <span class="nn">distutils.command</span> <span class="k">import</span> <span class="n">build_ext</span><span class="p">,</span> <span class="n">sdist</span>
+<span class="kn">from</span> <span class="nn">distutils.extension</span> <span class="k">import</span> <span class="n">Extension</span>
+
+<span class="kn">from</span> <span class="nn">.compilation</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">compile_sources</span><span class="p">,</span> <span class="n">link_py_so</span><span class="p">,</span> <span class="n">any_fort</span><span class="p">,</span>
+    <span class="n">any_cplus</span><span class="p">,</span> <span class="n">simple_cythonize</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">copy</span><span class="p">,</span> <span class="n">get_abspath</span><span class="p">,</span> <span class="n">missing_or_other_newer</span><span class="p">,</span>
+    <span class="n">MetaReaderWriter</span><span class="p">,</span> <span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="n">pyx_is_cplus</span><span class="p">,</span> <span class="n">make_dirs</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="PCExtension"><a class="viewcode-back" href="../../pycompilation.html#pycompilation.dist.PCExtension">[docs]</a><span class="k">def</span> <span class="nf">PCExtension</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ==========</span>
+<span class="sd">    template_regexps: list of 3-tuples</span>
+<span class="sd">        e.g. [(pattern1, target1, subsd1), ...], used to generate</span>
+<span class="sd">        templated code</span>
+<span class="sd">    pass_extra_compile_args: bool</span>
+<span class="sd">        should ext.extra_compile_args be passed along? default: False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">intercept</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;build_callbacks&#39;</span><span class="p">:</span> <span class="p">(),</span>  <span class="c1"># tuple of (callback, args, kwargs)</span>
+        <span class="s1">&#39;link_ext&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;build_files&#39;</span><span class="p">:</span> <span class="p">(),</span>
+        <span class="s1">&#39;dist_files&#39;</span><span class="p">:</span> <span class="p">(),</span>  <span class="c1"># work around stackoverflow.com/questions/2994396/</span>
+        <span class="s1">&#39;template_regexps&#39;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s1">&#39;pass_extra_compile_args&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># use distutils extra_compile_args?</span>
+        <span class="s1">&#39;pycompilation_compile_kwargs&#39;</span><span class="p">:</span> <span class="p">{},</span>
+        <span class="s1">&#39;pycompilation_link_kwargs&#39;</span><span class="p">:</span> <span class="p">{},</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">intercept</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">vals</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="n">intercept2</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;logger&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s1">&#39;only_update&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">intercept2</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">vck</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="n">vck</span> <span class="o">=</span> <span class="n">vals</span><span class="p">[</span><span class="s1">&#39;pycompilation_compile_kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">vck</span><span class="p">)</span>
+        <span class="n">vck</span> <span class="o">=</span> <span class="n">vck</span> <span class="ow">or</span> <span class="n">vals</span><span class="p">[</span><span class="s1">&#39;pycompilation_link_kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">vck</span><span class="p">)</span>
+        <span class="n">vals</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">vck</span>
+
+    <span class="n">instance</span> <span class="o">=</span> <span class="n">Extension</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">vals</span><span class="p">[</span><span class="s1">&#39;logger&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># interpret as we should instantiate a logger</span>
+        <span class="kn">import</span> <span class="nn">logging</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+        <span class="n">vals</span><span class="p">[</span><span class="s1">&#39;logger&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;PCExtension&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">instance</span></div>
+
+
+<span class="k">def</span> <span class="nf">_copy_or_render_source</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">render_callback</span><span class="p">,</span>
+                           <span class="n">skip_copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tries to do regex match for each (pattern, target, subsd) tuple</span>
+<span class="sd">    in ext.template_regexps for file f.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Either render a template or copy the source</span>
+    <span class="n">dirname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">subsd</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">template_regexps</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+            <span class="n">tgt</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dirname</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+                <span class="n">pattern</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+            <span class="n">rw</span> <span class="o">=</span> <span class="n">MetaReaderWriter</span><span class="p">(</span><span class="s1">&#39;.metadata_subsd&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">prev_subsd</span> <span class="o">=</span> <span class="n">rw</span><span class="o">.</span><span class="n">get_from_metadata_file</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="n">prev_subsd</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="n">render_callback</span><span class="p">(</span>
+                <span class="n">get_abspath</span><span class="p">(</span><span class="n">f</span><span class="p">),</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">tgt</span><span class="p">),</span>
+                <span class="n">subsd</span><span class="p">,</span>
+                <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                <span class="n">prev_subsd</span><span class="o">=</span><span class="n">prev_subsd</span><span class="p">,</span>
+                <span class="n">create_dest_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+            <span class="n">rw</span><span class="o">.</span><span class="n">save_to_metadata_file</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">subsd</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">tgt</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_copy</span><span class="p">:</span>
+            <span class="n">copy</span><span class="p">(</span><span class="n">f</span><span class="p">,</span>
+                 <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span>
+                              <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">f</span><span class="p">)),</span>
+                 <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                 <span class="n">dest_is_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">create_dest_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span>
+
+
+<div class="viewcode-block" id="render_python_template_to"><a class="viewcode-back" href="../../pycompilation.html#pycompilation.dist.render_python_template_to">[docs]</a><span class="k">def</span> <span class="nf">render_python_template_to</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">subsd</span><span class="p">,</span> <span class="n">only_update</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                              <span class="n">prev_subsd</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">create_dest_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                              <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Overload this function if you want to use a template engine such as</span>
+<span class="sd">        e.g. mako.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">only_update</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">subsd</span> <span class="o">==</span> <span class="n">prev_subsd</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">missing_or_other_newer</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Did not re-render </span><span class="si">{}</span><span class="s2">. &quot;</span>
+                               <span class="s2">&quot;(destination newer + same dict)&quot;</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src</span><span class="p">))</span>
+                    <span class="k">return</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s1">&#39;rt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ifh</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">ifh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>  <span class="c1"># Don&#39;t go crazy on file size...</span>
+
+        <span class="k">if</span> <span class="n">create_dest_dirs</span><span class="p">:</span>
+            <span class="n">dest_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">dest_dir</span><span class="p">):</span>
+                <span class="n">make_dirs</span><span class="p">(</span><span class="n">dest_dir</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="s1">&#39;wt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ofh</span><span class="p">:</span>
+            <span class="n">ofh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span> <span class="o">%</span> <span class="n">subsd</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="pc_build_ext"><a class="viewcode-back" href="../../pycompilation.html#pycompilation.dist.pc_build_ext">[docs]</a><span class="k">class</span> <span class="nc">pc_build_ext</span><span class="p">(</span><span class="n">build_ext</span><span class="o">.</span><span class="n">build_ext</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    build_ext class for PCExtension</span>
+<span class="sd">    Support for template_regexps</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">render_callback</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">render_python_template_to</span><span class="p">)</span>
+
+<div class="viewcode-block" id="pc_build_ext.run"><a class="viewcode-back" href="../../pycompilation.html#pycompilation.dist.pc_build_ext.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># honor the --dry-run flag</span>
+        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">extensions</span><span class="p">:</span>
+            <span class="n">sources</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Copying/rendering sources...&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">sources</span><span class="p">:</span>
+                <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_copy_or_render_source</span><span class="p">(</span>
+                    <span class="n">ext</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_temp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_callback</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Copying build_files...&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">build_files</span><span class="p">:</span>
+                <span class="n">copy</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">build_temp</span><span class="p">,</span>
+                                     <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">f</span><span class="p">)),</span>
+                     <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                     <span class="n">dest_is_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                     <span class="n">create_dest_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                     <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">pass_extra_compile_args</span><span class="p">:</span>
+                <span class="c1"># By default we do not pass extra_compile_kwargs</span>
+                <span class="c1"># since it contains &#39;-fno-strict-aliasing&#39; which</span>
+                <span class="c1"># harms performance.</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_compile_kwargs</span><span class="p">[</span><span class="s1">&#39;flags&#39;</span><span class="p">]</span> <span class="o">=</span>\
+                    <span class="n">ext</span><span class="o">.</span><span class="n">extra_compile_args</span><span class="p">,</span>
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">define_macros</span><span class="p">:</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_compile_kwargs</span><span class="p">[</span><span class="s1">&#39;define&#39;</span><span class="p">]</span> <span class="o">=</span>\
+                    <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">define_macros</span> <span class="o">+</span>
+                             <span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_compile_kwargs</span><span class="p">[</span><span class="s1">&#39;define&#39;</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">undef_macros</span><span class="p">:</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_compile_kwargs</span><span class="p">[</span><span class="s1">&#39;undef&#39;</span><span class="p">]</span> <span class="o">=</span>\
+                    <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">undef_macros</span> <span class="o">+</span>
+                             <span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_compile_kwargs</span><span class="p">[</span><span class="s1">&#39;undef&#39;</span><span class="p">]))</span>
+
+            <span class="c1"># Run build_callbaks if any were provided</span>
+            <span class="k">for</span> <span class="n">cb</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">build_callbacks</span><span class="p">:</span>
+                <span class="n">cb</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">build_temp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ext_fullpath</span><span class="p">(</span>
+                    <span class="n">ext</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="n">ext</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="c1"># Compile sources to object files</span>
+            <span class="n">src_objs</span> <span class="o">=</span> <span class="n">compile_sources</span><span class="p">(</span>
+                <span class="n">sources</span><span class="p">,</span>
+                <span class="n">cwd</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">build_temp</span><span class="p">,</span>
+                <span class="n">include_dirs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">get_abspath</span><span class="p">,</span> <span class="n">ext</span><span class="o">.</span><span class="n">include_dirs</span><span class="p">)),</span>
+                <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span>
+                <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_compile_kwargs</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Copying files needed for distribution..&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">rel_dst</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">dist_files</span><span class="p">:</span>
+                <span class="n">rel_dst</span> <span class="o">=</span> <span class="n">rel_dst</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="n">copy</span><span class="p">(</span>
+                    <span class="n">f</span><span class="p">,</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_ext_fullpath</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">name</span><span class="p">)),</span>
+                        <span class="n">rel_dst</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                    <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Link objects to a shared object</span>
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">link_ext</span><span class="p">:</span>
+                <span class="n">abs_so_path</span> <span class="o">=</span> <span class="n">link_py_so</span><span class="p">(</span>
+                    <span class="n">src_objs</span><span class="o">+</span><span class="n">ext</span><span class="o">.</span><span class="n">extra_objects</span><span class="p">,</span>
+                    <span class="n">cwd</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">build_temp</span><span class="p">,</span>
+                    <span class="n">flags</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">extra_link_args</span><span class="p">,</span>
+                    <span class="n">library_dirs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">get_abspath</span><span class="p">,</span> <span class="n">ext</span><span class="o">.</span><span class="n">library_dirs</span><span class="p">)),</span>
+                    <span class="n">libraries</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">libraries</span><span class="p">,</span>
+                    <span class="n">fort</span><span class="o">=</span><span class="n">any_fort</span><span class="p">(</span><span class="n">sources</span><span class="p">),</span>
+                    <span class="n">cplus</span><span class="o">=</span><span class="p">(((</span><span class="n">ext</span><span class="o">.</span><span class="n">language</span> <span class="ow">or</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;c++&#39;</span><span class="p">)</span> <span class="ow">or</span>
+                           <span class="n">any_cplus</span><span class="p">(</span><span class="n">sources</span><span class="p">)),</span>
+                    <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span>
+                    <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">ext</span><span class="o">.</span><span class="n">pycompilation_link_kwargs</span>
+                <span class="p">)</span>
+                <span class="n">copy</span><span class="p">(</span>
+                    <span class="n">abs_so_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ext_fullpath</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">name</span><span class="p">),</span>
+                    <span class="n">only_update</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">only_update</span><span class="p">,</span>
+                    <span class="n">create_dest_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">ext</span><span class="o">.</span><span class="n">logger</span>
+                <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="pc_sdist"><a class="viewcode-back" href="../../pycompilation.html#pycompilation.dist.pc_sdist">[docs]</a><span class="k">class</span> <span class="nc">pc_sdist</span><span class="p">(</span><span class="n">sdist</span><span class="o">.</span><span class="n">sdist</span><span class="p">):</span>
+
+    <span class="n">render_callback</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">render_python_template_to</span><span class="p">)</span>
+
+<div class="viewcode-block" id="pc_sdist.run"><a class="viewcode-back" href="../../pycompilation.html#pycompilation.dist.pc_sdist.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="o">.</span><span class="n">ext_modules</span><span class="p">:</span>
+            <span class="n">_sources</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">sources</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pyx&#39;</span><span class="p">):</span>
+                    <span class="n">cy_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;cplus&#39;</span><span class="p">:</span> <span class="n">pyx_is_cplus</span><span class="p">(</span><span class="n">src</span><span class="p">),</span>
+                        <span class="s1">&#39;include_path&#39;</span><span class="p">:</span> <span class="n">ext</span><span class="o">.</span><span class="n">include_dirs</span>
+                    <span class="p">}</span>
+                    <span class="n">_sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">simple_cythonize</span><span class="p">(</span>
+                        <span class="n">src</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">src</span><span class="p">),</span> <span class="o">**</span><span class="n">cy_kwargs</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Copy or render</span>
+                    <span class="n">_sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_copy_or_render_source</span><span class="p">(</span>
+                        <span class="n">ext</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">render_callback</span><span class="p">,</span> <span class="n">skip_copy</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+            <span class="n">ext</span><span class="o">.</span><span class="n">sources</span> <span class="o">=</span> <span class="n">_sources</span>
+        <span class="n">sdist</span><span class="o">.</span><span class="n">sdist</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020, Bjoern I. Dahlgren &lt;bjodah@gmail.com&gt;
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
