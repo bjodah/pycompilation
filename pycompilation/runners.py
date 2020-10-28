@@ -401,13 +401,15 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
             # -march=native not portable and problematic for Mac OSX:
-            'fast': ('-O2', '-ffast-math', '-funroll-loops'),
+            'fast': ('-O2',),
+            'very-fast-imprecise': ('-O3', '-ffast-math', '-funroll-loops'),
             'openmp': ('-fopenmp',),
             'debug': ('-g',),
         },
         'icc': {
             'pic': ('-fPIC',),
-            'fast': ('-fast',),
+            'fast': ('-O2',),
+            'very-fast-imprecise': ('-fast',),
             'openmp': ('-openmp',),
             'warn': ('-Wall',),
             'debug': ('-g',),
@@ -415,7 +417,8 @@ class CCompilerRunner(CompilerRunner, HasMetaData):
         'clang': {
             'pic': ('-fPIC',),
             'warn': ('-Wall', '-Wextra'),
-            'fast': ('-O2', '-ffast-math', '-funroll-loops'),
+            'fast': ('-O2',),
+            'very-fast-imprecise': ('-O3', '-ffast-math', '-funroll-loops'),
             'openmp': ('-fopenmp',),
             'debug': ('-g',),
         },
