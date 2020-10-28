@@ -14,8 +14,10 @@ from scipy.special import binom
 
 from pycompilation import compile_link_import_py_ext
 _template_base = os.path.dirname(__file__) + "/external_lib_sundials_integrate_serial_template"
-template_integrate_serial_c89 = open(_template_base + ".c89").read()
-template_integrate_serial_pyx = open(_template_base + ".pyx").read()
+with open(_template_base + ".c89") as ifh:
+    template_integrate_serial_c89 = ifh.read()
+with open(_template_base + ".pyx") as ifh:
+    template_integrate_serial_pyx = ifh.read()
 
 
 class ODEsys:

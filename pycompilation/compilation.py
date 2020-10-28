@@ -702,14 +702,16 @@ def compile_link_import_strings(codes, build_dir=None, **kwargs):
         md5_in_mem = md5_of_string(code_.encode('utf-8')).hexdigest()
         if only_update and os.path.exists(dest):
             if os.path.exists(dest+'.md5'):
-                md5_on_disk = open(dest+'.md5', 'rt').read()
+                with open(dest+'.md5', 'rt') as ifh:
+                    md5_on_disk = ifh.read()
             else:
                 md5_on_disk = md5_of_file(dest).hexdigest()
             differs = md5_on_disk != md5_in_mem
         if not only_update or differs:
-            with open(dest, 'wt') as fh:
+            with open(dest, 'wt') as ofh:
                 fh.write(code_)
-                open(dest+'.md5', 'wt').write(md5_in_mem)
+                with open(dest+'.md5', 'wt') as ofh_md5:
+                    ofh_md5.write(md5_in_mem)
         source_files.append(dest)
 
     return compile_link_import_py_ext(
