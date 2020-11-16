@@ -102,7 +102,8 @@ def get_special_chain(n, p, a):
     return y0, k, ODEsys(dydt, n, n-1), check
 
 
-def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8):
+def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8,
+         libs="sundials_nvecserial,sundials_cvode,sundials_sunlinsollapackdense,lapack,m"):
     if verbose:
         import logging
         logging.basicConfig(level=logging.DEBUG)
@@ -119,7 +120,7 @@ def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8):
     mod = compile_link_import_py_ext(
         source_files, build_dir=build_dir, logger=logger,
         include_dirs=[np.get_include()], options=("debug", "warn", "pic"),
-        libraries="sundials_nvecserial sundials_cvode sundials_sunlinsollapackdense lapack m".split())
+        libraries=libs.split(','))
     tout = np.linspace(0, 1)
     yout, info = mod.solve_ivp(np.asarray(tout, dtype=np.float64),
                                np.asarray(y0, dtype=np.float64),

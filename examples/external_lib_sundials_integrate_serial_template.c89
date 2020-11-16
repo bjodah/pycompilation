@@ -2,7 +2,11 @@
 #include <cvode/cvode.h>                     /* prototypes for CVODE fcts., consts.  */
 #include <nvector/nvector_serial.h>          /* access to serial N_Vector            */
 #include <sunmatrix/sunmatrix_dense.h>       /* access to dense SUNMatrix            */
-#include <sunlinsol/sunlinsol_lapackdense.h> /* access to dense SUNLinearSolver      */
+#if defined(SUNDIALS_BLAS_LAPACK)
+#  include <sunlinsol/sunlinsol_lapackdense.h> /* access to dense SUNLinearSolver      */
+#else
+#  include <sunlinsol/sunlinsol_dense.h>     /* access to dense SUNLinearSolver      */
+#endif
 #include <sundials/sundials_types.h>         /* defs. of realtype, sunindextype      */
 
 #define OUR_RESTRICT
@@ -94,7 +98,11 @@ int integrate(const realtype * const OUR_RESTRICT tout,
     mat_A = SUNDenseMatrix(ny, ny);
     if(mat_A == NULL) goto exit_dense_matrix;
 
+#if defined(SUNDIALS_BLAS_LAPACK)
     ls = SUNLinSol_LapackDense(nv_y, mat_A);
+#else
+    ls = SUNLinSol_Dense(nv_y, mat_A);
+#endif
     if(ls == NULL) goto exit_linear_solver;
 
     status = CVodeSetLinearSolver(cvode_mem, ls, mat_A);
