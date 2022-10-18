@@ -37,7 +37,7 @@ def DiskCache(cachedir, methods):
             from joblib import Memory
             self.cachedir = cachedir or mkdtemp()
 
-            self.memory = Memory(cachedir=self.cachedir)
+            self.memory = Memory(location=self.cachedir)
             for method in self.cached_methods:
                 setattr(self, method, self.memory.cache(getattr(self, method)))
 
