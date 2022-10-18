@@ -146,7 +146,7 @@ class MyPoly(DiskCache(cachedir, methods=("diff", "as_fortran_module"))):
         return hash(self.coeffs)
 
     def compile_link_import_py_ext(self):
-        build_dir = os.path.join(self.memory.cachedir, 'build')
+        build_dir = os.path.join(self.memory.location, 'build')
         try:
             os.mkdir(build_dir)
         except OSError:
