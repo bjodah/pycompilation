@@ -36,11 +36,13 @@ def run_compilation(**kwargs):
                 options=options_omp,
                 **kwargs),
         src2obj('euclid.cpp',
-                std='c++0x',
+                std='c++11',
                 options=options,
                 **kwargs),
         src2obj('euclid_wrapper.pyx',
-                cplus=True, **kwargs)
+                std='c++11',
+                cplus=True,
+                **kwargs)
     ]
 
     # Link a mixed C++/Fortran extension (shared object)
