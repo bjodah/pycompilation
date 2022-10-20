@@ -96,7 +96,7 @@ def main():
     except TypeError:
         pass
     else:
-        raise RuntimeError
+        raise RuntimeError("Something's not quite right...")
     print("All went well!")
 
 

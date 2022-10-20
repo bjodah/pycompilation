@@ -39,7 +39,7 @@ def DiskCache(cachedir, methods):
             from joblib import Memory
             self.cachedir = cachedir or mkdtemp()
 
-            self.memory = Memory(cachedir=self.cachedir)
+            self.memory = Memory(location=self.cachedir)
             for method in self.cached_methods:
                 setattr(self, method, self.memory.cache(getattr(self, method)))
 
@@ -148,7 +148,7 @@ class MyPoly(DiskCache(cachedir, methods=("diff", "as_fortran_module"))):
         return hash(self.coeffs)
 
     def compile_link_import_py_ext(self):
-        build_dir = os.path.join(self.memory.cachedir, 'build')
+        build_dir = os.path.join(self.memory.location, 'build')
         try:
             os.mkdir(build_dir)
         except OSError:
