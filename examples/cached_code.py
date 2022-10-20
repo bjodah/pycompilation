@@ -15,7 +15,7 @@ from pycompilation import compile_link_import_strings
 # Setup a cache dir with OS conventional path (use appdirs)
 appauthor = "Some Name"
 # TODO: .so file should carry version info in its name instead:
-appname = os.path.splitext(os.path.basename(__file__))[0] + f"_{'_'.join(map(str, sys.version_info)}"
+appname = os.path.splitext(os.path.basename(__file__))[0] + f"_{'_'.join(map(str, sys.version_info))}"
 cachedir = user_cache_dir(appname, appauthor)
 try:
     os.mkdir(cachedir)
