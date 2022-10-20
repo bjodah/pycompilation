@@ -3,6 +3,7 @@
 from __future__ import (absolute_import, division, print_function)
 
 import os
+import sys
 from time import sleep
 from textwrap import dedent
 
@@ -13,7 +14,8 @@ from pycompilation import compile_link_import_strings
 
 # Setup a cache dir with OS conventional path (use appdirs)
 appauthor = "Some Name"
-appname = os.path.splitext(os.path.basename(__file__))[0]
+# TODO: .so file should carry version info in its name instead:
+appname = os.path.splitext(os.path.basename(__file__))[0] + f"_{'_'.join(map(str, sys.version_info)}"
 cachedir = user_cache_dir(appname, appauthor)
 try:
     os.mkdir(cachedir)
