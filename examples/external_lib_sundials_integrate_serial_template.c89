@@ -9,7 +9,6 @@
 #endif
 #include <sundials/sundials_types.h>         /* defs. of realtype, sunindextype      */
 
-#define OUR_RESTRICT
 #ifndef OUR_RESTRICT
   #if defined (__STDC_VERSION__)
     #if __STDC_VERSION__ >= 199901L
@@ -19,7 +18,7 @@
     #endif
   #else
     #if defined(__GNUC__)
-      #define _RESTRICT __restrict__
+      #define OUR_RESTRICT __restrict__
     #elif defined(_MSC_VER) && _MSC_VER >= 1400
       #define OUR_RESTRICT __restrict
     #else
@@ -29,6 +28,12 @@
 #endif
 
 #include <string.h> /* memcpy */
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
 
 int func (realtype t, N_Vector nv_y, N_Vector f, void * params) {
     const realtype * const OUR_RESTRICT p = (realtype *) params;
@@ -42,6 +47,10 @@ int dense_jac (realtype t, N_Vector nv_y, N_Vector fy, SUNMatrix J, void *params
     const realtype * const OUR_RESTRICT y = &NV_Ith_S(nv_y, 0);
     %(dense_jac)s
 }
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 enum status_e {
     STATUS_SUCCESS = 0
@@ -69,21 +78,36 @@ int integrate(const realtype * const OUR_RESTRICT tout,
 
     void *cvode_mem = NULL;
     realtype cur_t = tout[0];
-
-    nv_y = N_VMake_Serial(ny, (realtype *)y0);
+#if SUNDIALS_VERSION_MAJOR >= 6
+    SUNContext sun_ctx;
+    status = SUNContext_Create(NULL /* not using MPI */, &sun_ctx);
+#endif
+    nv_y = N_VMake_Serial(ny, (realtype *)y0
+#if SUNDIALS_VERSION_MAJOR >= 6
+                          , sun_ctx
+#endif
+);
     if (nv_y == NULL){
         status = STATUS_Y;
         goto exit_y;
     }
 
-    nv_abstol = N_VMake_Serial(ny, (realtype *)abstol);
+    nv_abstol = N_VMake_Serial(ny, (realtype *)abstol
+#if SUNDIALS_VERSION_MAJOR >= 6
+                          , sun_ctx
+#endif
+);
     if (nv_abstol == NULL){
         status = STATUS_ABSTOL;
         goto exit_abstol;
     }
 
     /* For now we skip CV_FUNCTIONAL only use CV_NEWTON */
-    cvode_mem = CVodeCreate(CV_BDF); 
+    cvode_mem = CVodeCreate(CV_BDF
+#if SUNDIALS_VERSION_MAJOR >= 6
+                          , sun_ctx
+#endif
+); 
     if (cvode_mem == NULL){
         status = STATUS_CVODE_MEM;
         goto exit_cvode_mem;
@@ -95,13 +119,25 @@ int integrate(const realtype * const OUR_RESTRICT tout,
     status = CVodeSVtolerances(cvode_mem, reltol, nv_abstol);
     if (status != 0) goto exit_dense_matrix;
 
-    mat_A = SUNDenseMatrix(ny, ny);
+    mat_A = SUNDenseMatrix(ny, ny
+#if SUNDIALS_VERSION_MAJOR >= 6
+                          , sun_ctx
+#endif
+);
     if(mat_A == NULL) goto exit_dense_matrix;
 
 #if defined(SUNDIALS_BLAS_LAPACK)
-    ls = SUNLinSol_LapackDense(nv_y, mat_A);
+    ls = SUNLinSol_LapackDense(nv_y, mat_A
+#if SUNDIALS_VERSION_MAJOR >= 6
+                          , sun_ctx
+#endif
+);
 #else
-    ls = SUNLinSol_Dense(nv_y, mat_A);
+    ls = SUNLinSol_Dense(nv_y, mat_A
+#if SUNDIALS_VERSION_MAJOR >= 6
+                          , sun_ctx
+#endif
+);
 #endif
     if(ls == NULL) goto exit_linear_solver;
 
@@ -145,5 +181,8 @@ int integrate(const realtype * const OUR_RESTRICT tout,
  exit_abstol:
     N_VDestroy_Serial(nv_y);
  exit_y:
+#if SUNDIALS_VERSION_MAJOR >= 6
+    SUNContext_Free(&sun_ctx);
+#endif
     return status;
 }

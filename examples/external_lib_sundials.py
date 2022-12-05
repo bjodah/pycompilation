@@ -102,7 +102,7 @@ def get_special_chain(n, p, a):
     return y0, k, ODEsys(dydt, n, n-1), check
 
 
-def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8,
+def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8, savefig='',
          libs="sundials_nvecserial,sundials_cvode,sundials_sunlinsollapackdense,lapack,m"):
     if verbose:
         import logging
@@ -130,7 +130,17 @@ def main(verbose=False, clean=False, rtol=1e-8, atol=1e-8,
     assert info["status"] == 0 and info["num_steps"] > 5 and info["num_dls_jac_evals"] > 0
     forgive = 5  # relax analytic tolerances from those of solver
     check(yout[-1, :], atol, rtol, forgive)
-
+    if savefig:
+        from itertools import cycle
+        import matplotlib.pyplot as plt
+        plt.style.use('dark_background')
+        fig, ax = plt.subplots(1, 1, figsize=(11, 5), dpi=300)
+        dashes = cycle([[], [3, 1], [1, 1], [3, 1, 1, 1], [3, 1, 1, 1, 1, 1],
+                        [3, 1, 3, 1, 1, 1], [3, 1, 1, 1, 1, 1, 1, 1]])
+        for i, y in enumerate(yout.T):
+            ax.plot(tout, y, label=str(i), dashes=next(dashes))
+        ax.legend()
+        fig.savefig(savefig)
     if clean:
         shutil.rmtree(build_dir)
     else:

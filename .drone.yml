@@ -1,12 +1,12 @@
 pipeline:
   build:
-    image: bjodah/bjodahimg20dev:v1.2.3
+    image: bjodah/bjodahimg22dev:nov22.a
     environment:
-      - CPLUS_INCLUDE_PATH=/opt/boost_1_73_p/include
-      - PYCOMPILATION_TESTING_SUNDIALS_CFLAGS=-isystem /opt/sundials-5.3.0-klu-lapack/include
-      - PYCOMPILATION_TESTING_SUNDIALS_LDFLAGS=-Wl,--disable-new-dtags -Wl,-rpath,/opt/sundials-5.3.0-klu-lapack/lib -L/opt/sundials-5.3.0-klu-lapack/lib
-      - CC=gcc-10
-      - CXX=g++-10
+      #- CPLUS_INCLUDE_PATH=/opt/boost_1_73_p/include
+      - PYCOMPILATION_TESTING_SUNDIALS_CFLAGS=-isystem /opt/sundials-5.8.0-klu-lapack/include
+      - PYCOMPILATION_TESTING_SUNDIALS_LDFLAGS=-Wl,--disable-new-dtags -Wl,-rpath,/opt/sundials-5.8.0-klu-lapack/lib -L/opt/sundials-5.8.0-klu-lapack/lib
+      - CC=gcc-12
+      - CXX=g++-12
     commands:
       - bash -c '[[ $(python3 setup.py --version) =~ ^[0-9]+.* ]]'
       - ./scripts/ci.sh pycompilation
