@@ -6,6 +6,8 @@ import fnmatch
 import os
 import pickle
 import shutil
+import importlib.util
+import warnings
 
 from collections import namedtuple
 from hashlib import md5
@@ -309,17 +311,19 @@ def import_module_from_file(filename, only_if_newer_than=None):
     ImportError if any of the files specified in only_if_newer_than are newer
     than the file given by filename.
     """
-    import imp
+    if only_if_newer_than is not None:
+        warnings.warn(
+            ('keyword argument "only_if_newer_than" is deprecated, '
+             'perform this check manually before calling function if needed.'),
+            category=DeprecationWarning
+        )
     path, name = os.path.split(filename)
     name, ext = os.path.splitext(name)
     name = name.split('.')[0]
-    fobj, filename, data = imp.find_module(name, [path])
-    if only_if_newer_than:
-        for dep in only_if_newer_than:
-            if os.path.getmtime(filename) < os.path.getmtime(dep):
-                raise ImportError("{} is newer than {}".format(dep, filename))
-    mod = imp.load_module(name, fobj, filename, data)
-    fobj.close()
+    if (file_spec := importlib.util.spec_from_file_location(name, filename)) is None:
+        raise ImportError(f"Failed to import {filename} as {name}")
+    mod = importlib.util.module_from_spec(file_spec)
+    file_spec.loader.exec_module(mod)
     return mod
 
 

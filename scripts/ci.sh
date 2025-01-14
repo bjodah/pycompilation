@@ -1,9 +1,9 @@
-#!/bin/bash -xeu
+#!/bin/bash
+set -euxo pipefail
 PKG_NAME=${1:-${CI_REPO##*/}}
-if [[ "$DRONE_BRANCH" =~ ^v[0-9]+.[0-9]?* ]]; then
-    eval export ${PKG_NAME^^}_RELEASE_VERSION=\$DRONE_BRANCH
-    echo ${DRONE_BRANCH} | tail -c +2 > __conda_version__.txt
-fi
+
+source $(compgen -G /opt-3/cpython-v3.*-apt-deb/bin/activate)
+
 python3 setup.py sdist
 (cd dist/; ${PYTHON:-python3} -m pip install pytest $PKG_NAME-$(${PYTHON:-python3} ../setup.py --version).tar.gz)
 (cd /; ${PYTHON:-python3} -m pytest --pyargs $PKG_NAME)
