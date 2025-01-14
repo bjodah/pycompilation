@@ -12,7 +12,7 @@ else
 fi
 
 source $(compgen -G /opt-3/cpython-v3.*-apt-deb/bin/activate)
-
+( set +e; python3 -c "import sympy" || pip install sympy )
 python3 setup.py sdist
 (cd dist/; ${PYTHON:-python3} -m pip install pytest $PKG_NAME-$(${PYTHON:-python3} ../setup.py --version).tar.gz)
 (cd /; ${PYTHON:-python3} -m pytest --pyargs $PKG_NAME)
