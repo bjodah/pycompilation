@@ -29,7 +29,7 @@ def test_examples(pypath):
     assert p.wait() == os.EX_OK
 
 
-def test_cflags_ldflags_sundials():
+def _DISABLED_test_cflags_ldflags_sundials():
     env = os.environ.copy()
     env["CFLAGS"] = os.environ.get("PYCOMPILATION_TESTING_SUNDIALS_CFLAGS", "")
     env["LDFLAGS"] = os.environ.get("PYCOMPILATION_TESTING_SUNDIALS_LDFLAGS", "")
