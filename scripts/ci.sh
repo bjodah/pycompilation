@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euxo pipefail
 PKG_NAME=${1:-${CI_REPO##*/}}
+if [[ "$CI_COMMIT_BRANCH" =~ ^v[0-9]+.[0-9]?* ]]; then
+    eval export ${PKG_NAME^^}_RELEASE_VERSION=\$CI_COMMIT_BRANCH
+fi
 
 SUNDIALS_ROOT=$(compgen -G "/opt-3/sundials-6.*-release")
 if [ ! -e $SUNDIALS_ROOT/include/sundials/sundials_config.h ]; then
